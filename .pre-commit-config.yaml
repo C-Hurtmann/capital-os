@@ -1,0 +1,9 @@
+repos:
+  - repo: local
+    hooks:
+      - id: remove-empty-directories
+        name: Remove empty directories
+        entry: bash -c 'find . -depth -type d -empty ! -path "./.git*" ! -path "./.venv*" ! -path "./.idea*" ! -path "./.aws-sam*" -delete'
+        language: system
+        pass_filenames: false
+        always_run: true
