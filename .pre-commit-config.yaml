@@ -1,9 +1,23 @@
 repos:
   - repo: local
     hooks:
-      - id: remove-empty-directories
-        name: Remove empty directories
-        entry: bash -c 'find . -depth -type d -empty ! -path "./.git*" ! -path "./.venv*" ! -path "./.idea*" ! -path "./.aws-sam*" -delete'
+      - id: backend-ruff-check
+        name: Backend | Ruff Lint
+        entry: uv run --directory backend ruff check .
         language: system
+        files: ^backend/
         pass_filenames: false
-        always_run: true
+
+      - id: backend-ruff-format
+        name: Backend | Ruff Format
+        entry: uv run --directory backend ruff format --check .
+        language: system
+        files: ^backend/
+        pass_filenames: false
+
+      - id: backend-pytest
+        name: Backend | Pytest
+        entry: uv run --directory backend pytest -q
+        language: system
+        files: ^backend/
+        pass_filenames: false
