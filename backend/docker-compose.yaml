@@ -1,0 +1,27 @@
+
+services:
+  dynamodb-init:
+    image: alpine:3.22
+    user: "0:0"
+    command: "chown -R 1000:1000 /data"
+    volumes:
+      - dynamodb-data:/data
+    restart: "no"
+
+  dynamodb:
+    image: amazon/dynamodb-local:latest
+    working_dir: /home/dynamodblocal
+    command: "-jar DynamoDBLocal.jar -sharedDb -dbPath ./data"
+
+    depends_on:
+      dynamodb-init:
+        condition: service_completed_successfully
+
+    ports:
+      - "127.0.0.1:8000:8000"
+
+    volumes:
+      - dynamodb-data:/home/dynamodblocal/data
+
+volumes:
+  dynamodb-data:
