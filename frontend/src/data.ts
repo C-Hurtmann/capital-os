@@ -21,7 +21,14 @@ export const accounts = [
   { id: "white", name: "monobank · White", currency: "UAH", balanceMinor: 0 },
 ];
 const opening: Record<string, number> = { black: 4820000, white: 1200000 };
-export const transactions: Transaction[] = [];
+const mockRows: Omit<
+  Transaction,
+  | "bankId"
+  | "timestamp"
+  | "operationAmountMinor"
+  | "operationCurrencyCode"
+  | "balanceMinor"
+>[] = [];
 for (
   let day = new Date("2026-01-01T00:00:00Z"), i = 0;
   day.toISOString().slice(0, 10) <= DEMO_TODAY;
@@ -30,21 +37,21 @@ for (
   const date = day.toISOString().slice(0, 10);
   const n = day.getUTCDate();
   if (n === 5 || n === 20)
-    transactions.push({
+    mockRows.push({
       date,
       accountId: "black",
       amountMinor: n === 5 ? 4200000 : 1800000,
       category: "salary",
     });
   const category = Object.keys(labels)[i % 6];
-  transactions.push({
+  mockRows.push({
     date,
     accountId: i % 4 === 0 ? "white" : "black",
     amountMinor: -(18000 + ((i * 7919) % 165000)),
     category,
   });
   if (n === 12)
-    transactions.push(
+    mockRows.push(
       {
         date,
         accountId: "black",
@@ -61,6 +68,23 @@ for (
       },
     );
 }
+const runningBalances = { ...opening };
+export const transactions: Transaction[] = mockRows.map((row, index) => {
+  runningBalances[row.accountId] += row.amountMinor;
+  const foreignPurchase =
+    row.amountMinor < 0 && !row.transfer && index % 7 === 0;
+  return {
+    ...row,
+    bankId: `mock-bank-${index + 1}`,
+    timestamp: `${row.date}T12:00:${String(index % 60).padStart(2, "0")}Z`,
+    // Synthetic source amounts, not a historical exchange-rate calculation.
+    operationAmountMinor: foreignPurchase
+      ? -(499 + (index % 2000))
+      : row.amountMinor,
+    operationCurrencyCode: foreignPurchase ? 978 : 980,
+    balanceMinor: runningBalances[row.accountId],
+  };
+});
 export function validateQuery(q: DashboardQuery): void {
   const valid = (s: string) =>
     /^\d{4}-\d{2}-\d{2}$/.test(s) &&

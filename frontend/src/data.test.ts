@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { aggregate, validateQuery } from "./data";
+import { aggregate, validateQuery, transactions } from "./data";
 import { change } from "./format";
 const q = { from: "2026-10-01", to: "2026-10-29", currency: "UAH" };
 describe("financial semantics", () => {
@@ -67,4 +67,26 @@ describe("financial semantics", () => {
     expect(change(100, 0)).toBe("Немає бази порівняння");
     expect(change(0, 0)).toBe("Без змін");
   });
+});
+
+// Approved domain fixtures retain account movement and original foreign amount separately.
+it("preserves unique bank IDs, post-operation balances and foreign source amounts", () => {
+  expect(new Set(transactions.map((t) => t.bankId)).size).toBe(
+    transactions.length,
+  );
+  const balances: Record<string, number> = { black: 4820000, white: 1200000 };
+  for (const t of transactions) {
+    balances[t.accountId] += t.amountMinor;
+    expect(t.balanceMinor).toBe(balances[t.accountId]);
+    expect(Number.isSafeInteger(t.amountMinor)).toBe(true);
+    expect(Number.isSafeInteger(t.operationAmountMinor)).toBe(true);
+    expect(Number.isNaN(Date.parse(t.timestamp))).toBe(false);
+  }
+  expect(
+    transactions.some(
+      (t) =>
+        t.operationCurrencyCode === 978 &&
+        t.operationAmountMinor !== t.amountMinor,
+    ),
+  ).toBe(true);
 });

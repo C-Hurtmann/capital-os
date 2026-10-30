@@ -156,3 +156,13 @@ Never add different currencies. Initial UI selects only UAH accounts; no exchang
 | 2026-10-29 | Problem JSON and session integration                  | PROPOSED | Await user/backend architect review |
 
 After agreement, update this log, `src/contracts.ts`, mock aggregation, adapter and semantic tests in one change. No proposal is APPROVED yet.
+
+## Approved domain model — 2026-10-30
+
+**APPROVED (domain only):** main historical account is Monobank UAH. All monetary amounts are integer minor units. `amountMinor` is the actual account-currency movement; `operationAmountMinor` is the original operation amount, with numeric ISO 4217 `operationCurrencyCode`. `balanceMinor` is the account balance after the operation. Each transaction has a unique `bankId` and a timestamp. The real history contains 2,177 transactions, including foreign purchases; synthetic fixtures do not claim to reproduce that history.
+
+Analytics must use `amountMinor` in UAH, never sum original amounts across currencies or reconvert them. Original amounts are display metadata. DynamoDB PK/SK are excluded from frontend models. RFC3339 timestamp serialization is a frontend proposal, not an approved transport decision. Date/category/transfer fields in the mock are derived frontend fixtures, not newly approved bank fields.
+
+All REST endpoint proposals above remain **PROPOSED**. This domain approval does not approve response envelopes, authentication, aggregation or transfer/refund rules. The current aggregate endpoint remains sufficient for the dashboard: original operation fields should only be transferred when an operation-detail UI actually needs them. No extra transaction screen or endpoint is required now.
+
+Frontend position: integer JSON numbers are exact only inside JavaScript's safe-integer range, including intermediate sums. The API must enforce that bound or agree on decimal integer strings; merely specifying integer storage does not guarantee frontend precision. Do not infer exchange rates or currency decimal exponents from numeric currency codes. Currency metadata/exponents and timestamp serialization remain transport details to agree before displaying original amounts.

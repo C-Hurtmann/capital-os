@@ -36,7 +36,13 @@ export interface Dashboard {
   }[];
   months: { month: string; incomeMinor: number; expenseMinor: number }[];
 }
+/** Approved domain semantics; not an approved REST resource. */
 export interface Transaction {
+  bankId: string;
+  timestamp: string; // RFC3339 instant in this frontend model
+  operationAmountMinor: number;
+  operationCurrencyCode: number; // numeric ISO 4217
+  balanceMinor: number; // account balance immediately after this operation
   date: string;
   accountId: string;
   amountMinor: number;
