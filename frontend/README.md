@@ -1,10 +1,10 @@
-# Capital OS frontend
+# Capital OS frontend — v0.9 review build
 
-Responsive Ukrainian-language financial dashboard. Frontend only; no backend, infrastructure or legacy files were changed. API contracts remain **PROPOSED**, pending review.
+English-only, Graphite / Forest, one synthetic Monobank UAH account. This is an interactive frontend proposal for review, not a production bank connection or an approved REST integration.
 
 ## Run
 
-Use Node 22.13+ (recommended) and npm in Linux/WSL for this Linux checkout. Do not share node_modules between Windows and Linux.
+Use Node >=22.13 in Linux/WSL. Do not share node_modules between Windows and Linux.
 
 ```sh
 cd /home/czagorodnyi/projects/capital-os/frontend
@@ -12,56 +12,43 @@ npm ci
 npm run dev
 ```
 
-Open http://localhost:5173. Demo mode is the default and makes no API calls. The dataset is synthetic, deterministic and anchored to **2026-10-29**, covering January–October 2026. No bank data or credentials are used. Values and dates are formatted for uk-UA, UAH. Prior empty dates can be selected to inspect empty state.
+Open http://localhost:5173. The synthetic snapshot is fixed to 29 October 2026, with history beginning January 2025. It does not reproduce the user's 2,177 real transactions.
+
+## Included
+
+- Spacious dashboard composition, dark graphite surfaces and forest main card.
+- Current Balance and Actual Monthly Net Cashflow, with labeled green income and red expenses.
+- Independent Balance History range: 3 / 6 months, 1 year, All, Custom. Three months is a review default, not a newly approved product decision.
+- Last 12 calendar months including the partial current month; current-month categories with selectable donut and exact values.
+- Transactions: date, absolute UAH amount, direction and category filters; 20-row pagination; operation details and immutable bank MCC; original EUR amounts for synthetic foreign purchases.
+- Category overrides and manually entered current credit limit persist locally. Saving categories updates category analytics without changing bank amounts or balances.
+- Refresh demo and offline failure state retain displayed data. Neither action contacts Monobank.
+
+## Financial behavior
+
+All positive UAH movements count as income, all negative movements count as expenses, including outgoing card transfers. No cashflow exclusions. Refunds are ordinary positive movements. Money uses integer minor units; addition rejects unsafe integers. Original operation currencies are metadata and never added to UAH analytics. No separately invented fee is added. Unknown history before January 2025 is rejected rather than fabricated. Credit split is explicitly unknown pending bank balance semantics; entering a limit does not assert a split or alter the historical graph.
+
+## Review boundaries
+
+Google Sign-In and real session handling are not implemented. No fake Google authentication is presented. Bank synchronization, server persistence, source freshness and production error recovery require backend integration. This build deliberately does not call the obsolete proposed dashboard endpoint or interpret it as approved. Setting the earlier VITE_DATA_SOURCE=http no longer enables that adapter. API design remains a separate review step.
+
+The fixed category list is provisional and includes Credit. Final tokens, mobile details, donut interaction and the default history period remain review proposals. Budget planning, Planned Balance, portfolio, installments, historical credit limits and chart reordering are excluded.
+
+## Architecture
+
+React + strict TypeScript + Vite, Recharts, Lucide, plain CSS. No new dependencies. App composes dashboard/navigation; Charts is lazy-loaded; Transactions owns filters and operation-detail state; data owns synthetic fixtures and aggregates. Browser storage contains only demo overrides and the entered limit, never tokens. The current two-view navigation is a review implementation; URL routing/session integration should be agreed for production.
+
+## Checks
 
 ```sh
+npm run build
 npm run lint
 npm test
-npm run build
 npm run format:check
 npx playwright install chromium
-npx playwright test
+npm run test:e2e
 ```
 
-`npm run preview` serves the production bundle. `npm run format` formats sources. Tests and screenshots are local artifacts under ignored test-results/.
+Browser tests exercise responsive overflow, axe checks, independent history ranges, category persistence and offline refresh. Screenshots are in ignored test-results/review-{width}.png. Browser and automated accessibility coverage do not establish full WCAG conformance.
 
-## Design and choices
-
-React + strict TypeScript + Vite: a client-rendered, one-screen application, no SSR needs and no router or global store. Local state and an abortable effect handle period/account filters and loading. CSS Grid and media queries handle phones, tablets and wide monitors; no UI kit or styling runtime. Lucide supplies consistent icons. Recharts provides interactive SVG graphs, responsive layout and keyboard navigation; native expandable tables expose daily/monthly data, and category buttons expose exact category values. Native date inputs avoid a heavyweight calendar dependency. Locale is Ukrainian because the initial integration is Monobank/UAH.
-
-Warm neutral surfaces, deep green emphasis, restrained typography and sparse borders keep financial data dominant. All filters apply to all series; current balance is clearly distinguished from historical period-end balance. Transfer treatment is described beside the cashflow and in the footer. Presets complement the custom range. Loading clears old chart views, aborting obsolete requests prevents stale responses, errors offer recovery, and zero activity preserves balance continuity.
-
-Alternatives: Vue would also be suitable; legacy Vue is mostly a scaffold, so migration investment is minimal. A query cache is useful when several pages share server data, but unnecessary here. Full transaction downloads would simplify mock-to-API parity but expose more data and require client financial aggregation; the proposed server aggregates are preferable. Recharts adds bundle weight; acceptable for this data-focused screen, with code splitting a future measurement-driven option.
-
-## Structure
-
-- src/contracts.ts: typed provisional response/query shapes.
-- src/data.ts: synthetic transactions, financial aggregation and mock/HTTP adapter.
-- src/format.ts: display formatting and zero-safe comparisons.
-- src/App.tsx: dashboard composition, filters and states.
-- src/Charts.tsx: lazy-loaded interactive charts and accessible tables.
-- src/styles.css: responsive visual system and keyboard focus styling.
-- src/data.test.ts: accounting invariants, dates, account filtering and transfer semantics.
-- tests/dashboard.spec.ts: browser layout, interactions and automated accessibility scans.
-- docs/api-contract-proposal.md: single API proposal, examples, semantics and decision log.
-
-## Legacy discovery
-
-Read-only reference: local project_0 dashboard/views.py, transactions/models.py, dashboard/services/plots/scatter.py and frontend/project_0/src/views/DashboardView.vue. Legacy derives a daily running balance from transactions, uses current-month MCC spending and grouped monthly positive/negative amounts. Its dashboard directly queries Transaction.objects, bypassing the transfer visibility manager, so paired internal transfers can inflate both incomes and expenses. Multi-account/currency semantics are not explicit; empty transaction sets assume a first row. Vue dashboard contains only placeholder bar/pie components. Improvements: consistent date filters for every panel, distinct current/historical balances, explicit account scope, transfer exclusion from cashflow, empty/error states, accessible tables, keyboard use and responsive layout.
-
-## Future HTTP integration
-
-Only after backend agreement, configure Vite environment variables (public configuration only):
-
-```sh
-VITE_DATA_SOURCE=http
-VITE_API_BASE_URL=https://your-api-host.example
-```
-
-Prefer same-origin reverse proxy and HttpOnly session cookies; cross-origin cookie/CORS behavior needs explicit backend design. Never place Monobank tokens or secrets in frontend variables. Adapter calls the proposed GET /api/v1/dashboard, sends an AbortSignal, checks HTTP status, then consumes the typed response. Runtime schema validation, structured problem field mapping and real authentication require backend agreement before production. No fallback to synthetic data on API failure. Native UAH only; no currency conversion or portfolio screen.
-
-The mocked date boundary and preset intervals are fixed to the demo snapshot. Live-date presets, backend-provided account metadata before initial filtering, source freshness, refund rules and authentication should be finalized with the actual integration; HTTP mode is an integration seam, not a verified production backend.
-
-## Accessibility and verification scope
-
-Semantic landmarks/headings, visible focus, skip link, labeled inputs, keyboard-operable filters, status/alert feedback, category names and values, and data tables supplement chart colors. Automated WCAG-tagged axe scans and viewport overflow checks are included. These checks do not establish full WCAG 2.2 AA conformance; manual assistive technology and browser testing remain appropriate before release. See docs/verification.md for actual run results.
+The updated API proposal in docs/api-contract-proposal.md covers the current MVP and remains PROPOSED. The demo view model is not an approved REST schema.

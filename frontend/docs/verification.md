@@ -1,20 +1,9 @@
-# Verification — 2026-10-29
+# Verification — v0.9 review update, 2026-10-31
 
-Environment: Ubuntu WSL, temporary Node 22 runtime; npm dependencies installed in the frontend checkout. No backend, infrastructure or legacy edits. No git push or commit.
+Strict TypeScript production build and ESLint pass. Seven financial unit tests pass: all movement cashflow, category/month reconciliation, history bounds, bank IDs/MCC/balances, safe sums, independent current balance and invalid filters.
 
-| Check                                | Result                                                  |
-| ------------------------------------ | ------------------------------------------------------- |
-| TypeScript strict + production build | PASS                                                    |
-| ESLint                               | PASS                                                    |
-| Vitest financial semantics           | 7/7 PASS                                                |
-| Playwright Chromium                  | 6/6 PASS                                                |
-| axe WCAG 2 A/AA, 2.1 AA, 2.2 AA tags | 0 violations on tested default dashboard at four widths |
-| Horizontal overflow                  | none at 375, 768, 1440, 1920 px                         |
-| Prettier check                       | PASS                                                    |
-| npm audit                            | 0 vulnerabilities                                       |
+Chromium browser coverage: 375, 768, 1440, 1920 px; no horizontal dashboard overflow; axe WCAG 2 A/AA, 2.1 AA and 2.2 AA tagged scans on those dashboard sizes. Additional scenarios exercise history isolation, local category persistence without amount changes, transaction filtering and offline demo refresh retaining balances.
 
-Browser scenarios cover account and period filtering, category selection, empty historical interval, skip-link keyboard access, invalid-range feedback and recovery. Screenshots for each viewport are in ignored test-results/dashboard-{width}.png. Desktop 1440 and phone 375 screenshots were visually inspected. The initial axe scan found one 4.49:1 muted text contrast issue; the foreground was darkened and all scans rerun successfully.
+Desktop 1440 and mobile 375 full-page screenshots were visually inspected. Screenshot artifacts are ignored under test-results/. Accessibility and responsive tests supplement, not replace, assistive-technology and real-device testing. Google authentication, live bank synchronization and real API integration are not tested or implemented.
 
-Bundle: entry JavaScript 236.80 kB (75.07 kB gzip), deferred chart module 399.07 kB (113.71 kB gzip), CSS 11.73 kB (3.18 kB gzip). Charts load separately with a loading fallback. No external fonts or image downloads.
-
-Limits: automated scans are not full WCAG certification. Safari/Firefox, physical touch devices, screen-reader reading order and real backend integration have not been verified. HTTP mode is provisional and requires agreed response validation/authentication before production. Mock presets and data are anchored to 2026-10-29, and only UAH is supported. Amounts in the dashboard are rounded to whole hryvnias for compact display; accounting uses integer minor units. Refund-specific behavior is awaiting agreement.
+Amounts show two decimals. The synthetic account has no private history. No backend or infrastructure changes, no commit or push.

@@ -1,132 +1,120 @@
 import type { Dashboard, DashboardQuery, Transaction } from "./contracts";
 export const DEMO_TODAY = "2026-10-29";
 export const labels: Record<string, string> = {
-  groceries: "Продукти",
-  dining: "Кафе та ресторани",
-  shopping: "Покупки",
-  transport: "Транспорт",
-  home: "Дім та послуги",
-  other: "Інше",
+  groceries: "Groceries",
+  dining: "Dining",
+  shopping: "Shopping",
+  transport: "Transport",
+  home: "Home & utilities",
+  other: "Other",
+  credit: "Credit",
+  salary: "Income",
 };
-const mcc: Record<string, string[]> = {
+const categoryMcc: Record<string, string[]> = {
   groceries: ["5411"],
   dining: ["5812", "5814"],
   shopping: ["5311"],
   transport: ["4111", "5541"],
   home: ["4900"],
   other: ["5999"],
+  credit: ["4829"],
+  salary: ["0000"],
 };
 export const accounts = [
-  { id: "black", name: "monobank · Black", currency: "UAH", balanceMinor: 0 },
-  { id: "white", name: "monobank · White", currency: "UAH", balanceMinor: 0 },
+  { id: "black", name: "Monobank", currency: "UAH", balanceMinor: 0 },
 ];
-const opening: Record<string, number> = { black: 4820000, white: 1200000 };
-const mockRows: Omit<
-  Transaction,
-  | "bankId"
-  | "timestamp"
-  | "operationAmountMinor"
-  | "operationCurrencyCode"
-  | "balanceMinor"
->[] = [];
-for (
-  let day = new Date("2026-01-01T00:00:00Z"), i = 0;
-  day.toISOString().slice(0, 10) <= DEMO_TODAY;
-  day.setUTCDate(day.getUTCDate() + 1), i++
-) {
-  const date = day.toISOString().slice(0, 10);
-  const n = day.getUTCDate();
-  if (n === 5 || n === 20)
-    mockRows.push({
-      date,
-      accountId: "black",
-      amountMinor: n === 5 ? 4200000 : 1800000,
-      category: "salary",
-    });
-  const category = Object.keys(labels)[i % 6];
-  mockRows.push({
-    date,
-    accountId: i % 4 === 0 ? "white" : "black",
-    amountMinor: -(18000 + ((i * 7919) % 165000)),
-    category,
-  });
-  if (n === 12)
-    mockRows.push(
-      {
-        date,
-        accountId: "black",
-        amountMinor: -400000,
-        category: "transfer",
-        transfer: true,
-      },
-      {
-        date,
-        accountId: "white",
-        amountMinor: 400000,
-        category: "transfer",
-        transfer: true,
-      },
-    );
-}
-const runningBalances = { ...opening };
-export const transactions: Transaction[] = mockRows.map((row, index) => {
-  runningBalances[row.accountId] += row.amountMinor;
-  const foreignPurchase =
-    row.amountMinor < 0 && !row.transfer && index % 7 === 0;
-  return {
-    ...row,
+export const OPENING_BALANCE = 4820000;
+export const transactions: Transaction[] = [];
+let balance = OPENING_BALANCE;
+function add(date: string, amountMinor: number, category: string) {
+  balance = checkedAdd(balance, amountMinor);
+  const index = transactions.length;
+  const foreign = amountMinor < 0 && category !== "credit" && index % 7 === 0;
+  transactions.push({
     bankId: `mock-bank-${index + 1}`,
-    timestamp: `${row.date}T12:00:${String(index % 60).padStart(2, "0")}Z`,
-    // Synthetic source amounts, not a historical exchange-rate calculation.
-    operationAmountMinor: foreignPurchase
-      ? -(499 + (index % 2000))
-      : row.amountMinor,
-    operationCurrencyCode: foreignPurchase ? 978 : 980,
-    balanceMinor: runningBalances[row.accountId],
-  };
-});
-export function validateQuery(q: DashboardQuery): void {
+    timestamp: `${date}T12:00:${String(index % 60).padStart(2, "0")}Z`,
+    date,
+    accountId: "black",
+    amountMinor,
+    category,
+    mcc: categoryMcc[category][0],
+    operationAmountMinor: foreign ? -(499 + (index % 2000)) : amountMinor,
+    operationCurrencyCode: foreign ? 978 : 980,
+    balanceMinor: balance,
+  });
+}
+for (
+  let d = Date.parse("2025-01-01"), i = 0;
+  d <= Date.parse(DEMO_TODAY);
+  d += 86400000, i++
+) {
+  const date = new Date(d).toISOString().slice(0, 10),
+    day = new Date(d).getUTCDate();
+  if (day === 5 || day === 20)
+    add(date, day === 5 ? 2400000 : 1600000, "salary");
+  add(date, -(18000 + ((i * 7919) % 165000)), Object.keys(labels)[i % 6]);
+  if (day === 12) add(date, -400000, "credit");
+}
+export function checkedAdd(a: number, b: number): number {
+  if (
+    !Number.isSafeInteger(a) ||
+    !Number.isSafeInteger(b) ||
+    !Number.isSafeInteger(a + b)
+  )
+    throw new Error("Amount exceeds the supported integer range.");
+  return a + b;
+}
+const overridesKey = "capital-demo-category-overrides";
+export function effectiveCategory(t: Transaction): string {
+  try {
+    const saved = JSON.parse(localStorage.getItem(overridesKey) || "{}");
+    return typeof saved[t.bankId] === "string" && saved[t.bankId] in labels
+      ? saved[t.bankId]
+      : t.category;
+  } catch {
+    return t.category;
+  }
+}
+export function saveCategory(bankId: string, category: string) {
+  if (!(category in labels) || !transactions.some((t) => t.bankId === bankId))
+    throw new Error("Invalid category or transaction.");
+  const saved = JSON.parse(localStorage.getItem(overridesKey) || "{}");
+  localStorage.setItem(
+    overridesKey,
+    JSON.stringify({ ...saved, [bankId]: category }),
+  );
+  window.dispatchEvent(new Event("capital-category-change"));
+}
+export function validateQuery(q: DashboardQuery) {
   const valid = (s: string) =>
     /^\d{4}-\d{2}-\d{2}$/.test(s) &&
     !Number.isNaN(Date.parse(s)) &&
     new Date(s).toISOString().slice(0, 10) === s;
   if (!valid(q.from) || !valid(q.to) || q.from > q.to)
-    throw new Error(
-      "Вкажіть коректний період. Початок має бути до завершення.",
-    );
+    throw new Error("Choose a valid date range.");
+  if (q.from < "2025-01-01")
+    throw new Error("History before January 2025 is unavailable.");
   if (q.to > DEMO_TODAY)
-    throw new Error("Дата завершення не може бути пізніше дати демо.");
-  if ((Date.parse(q.to) - Date.parse(q.from)) / 86400000 > 365)
-    throw new Error("Оберіть період до 366 днів.");
-  if (q.currency !== "UAH") throw new Error("Демо підтримує лише UAH.");
-  if (q.accountId && !accounts.some((a) => a.id === q.accountId))
-    throw new Error("Невідомий рахунок.");
+    throw new Error("Choose dates up to the demo snapshot.");
+  if (q.currency !== "UAH" || (q.accountId && q.accountId !== "black"))
+    throw new Error("Only the main UAH account is available.");
 }
 export function aggregate(q: DashboardQuery): Dashboard {
   validateQuery(q);
-  const selected = accounts.filter((a) => !q.accountId || a.id === q.accountId);
-  const tx = transactions.filter((t) =>
-    selected.some((a) => a.id === t.accountId),
-  );
-  const balanceAt = (date: string, inclusive = true) =>
-    selected.reduce((s, a) => s + opening[a.id], 0) +
-    tx
-      .filter((t) => (inclusive ? t.date <= date : t.date < date))
-      .reduce((s, t) => s + t.amountMinor, 0);
-  const range = tx.filter(
-    (t) => t.date >= q.from && t.date <= q.to && !t.transfer,
-  );
-  const duration = Date.parse(q.to) - Date.parse(q.from) + 86400000;
-  const previousStart = new Date(Date.parse(q.from) - duration)
-    .toISOString()
-    .slice(0, 10);
-  const previous = tx.filter(
-    (t) => t.date >= previousStart && t.date < q.from && !t.transfer,
-  );
+  const range = transactions.filter((t) => t.date >= q.from && t.date <= q.to);
   const sum = (items: Transaction[], income: boolean) =>
     items
       .filter((t) => (income ? t.amountMinor > 0 : t.amountMinor < 0))
-      .reduce((s, t) => s + Math.abs(t.amountMinor), 0);
+      .reduce((s, t) => checkedAdd(s, Math.abs(t.amountMinor)), 0);
+  const balanceAt = (date: string, inclusive = true) =>
+    transactions
+      .filter((t) => (inclusive ? t.date <= date : t.date < date))
+      .at(-1)?.balanceMinor ?? OPENING_BALANCE;
+  const length = Date.parse(q.to) - Date.parse(q.from) + 86400000;
+  const prev = new Date(Date.parse(q.from) - length).toISOString().slice(0, 10);
+  const previous = transactions.filter(
+    (t) => t.date >= prev && t.date < q.from,
+  );
   const timeline = [];
   for (let d = Date.parse(q.from); d <= Date.parse(q.to); d += 86400000) {
     const date = new Date(d).toISOString().slice(0, 10);
@@ -134,13 +122,12 @@ export function aggregate(q: DashboardQuery): Dashboard {
   }
   const months: Dashboard["months"] = [];
   for (
-    let d = new Date(q.from + "T00:00:00Z");
+    let d = new Date(q.from.slice(0, 7) + "-01T00:00:00Z");
     d.toISOString().slice(0, 7) <= q.to.slice(0, 7);
     d.setUTCMonth(d.getUTCMonth() + 1)
   ) {
-    d.setUTCDate(1);
-    const month = d.toISOString().slice(0, 7);
-    const items = range.filter((t) => t.date.startsWith(month));
+    const month = d.toISOString().slice(0, 7),
+      items = range.filter((t) => t.date.startsWith(month));
     months.push({
       month,
       incomeMinor: sum(items, true),
@@ -148,21 +135,14 @@ export function aggregate(q: DashboardQuery): Dashboard {
     });
   }
   return {
-    currency: q.currency,
+    currency: "UAH",
     minorUnit: 2,
     from: q.from,
     to: q.to,
     asOf: DEMO_TODAY + "T18:30:00Z",
-    accounts: accounts.map((a) => ({
-      ...a,
-      balanceMinor:
-        opening[a.id] +
-        transactions
-          .filter((t) => t.accountId === a.id)
-          .reduce((s, t) => s + t.amountMinor, 0),
-    })),
+    accounts: accounts.map((a) => ({ ...a, balanceMinor: balance })),
     overview: {
-      currentBalanceMinor: balanceAt(DEMO_TODAY),
+      currentBalanceMinor: balance,
       openingBalanceMinor: balanceAt(q.from, false),
       closingBalanceMinor: balanceAt(q.to),
       incomeMinor: sum(range, true),
@@ -171,58 +151,18 @@ export function aggregate(q: DashboardQuery): Dashboard {
       previousExpenseMinor: sum(previous, false),
     },
     timeline,
+    months,
     categories: Object.entries(labels)
       .map(([id, label]) => ({
         id,
         label,
-        mccCodes: mcc[id],
+        mccCodes: categoryMcc[id],
         amountMinor: sum(
-          range.filter((t) => t.category === id),
+          range.filter((t) => effectiveCategory(t) === id),
           false,
         ),
       }))
       .filter((c) => c.amountMinor > 0)
       .sort((a, b) => b.amountMinor - a.amountMinor),
-    months,
   };
-}
-export async function getDashboard(
-  q: DashboardQuery,
-  signal: AbortSignal,
-): Promise<Dashboard> {
-  const config = import.meta.env;
-  if (config.VITE_DATA_SOURCE === "http") {
-    const params = new URLSearchParams({
-      from: q.from,
-      to: q.to,
-      currency: q.currency,
-      timeZone: "Europe/Kyiv",
-      ...(q.accountId ? { accountId: q.accountId } : {}),
-    });
-    const response = await fetch(
-      `${config.VITE_API_BASE_URL || ""}/api/v1/dashboard?${params}`,
-      {
-        signal,
-        credentials: "same-origin",
-        headers: { Accept: "application/json" },
-      },
-    );
-    if (!response.ok)
-      throw new Error(
-        `Не вдалося завантажити дані (${response.status}). Спробуйте ще раз.`,
-      );
-    return response.json() as Promise<Dashboard>;
-  }
-  await new Promise<void>((resolve, reject) => {
-    const timer = setTimeout(resolve, 350);
-    signal.addEventListener(
-      "abort",
-      () => {
-        clearTimeout(timer);
-        reject(new DOMException("Aborted", "AbortError"));
-      },
-      { once: true },
-    );
-  });
-  return aggregate(q);
 }

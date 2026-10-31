@@ -38,6 +38,7 @@ export interface Dashboard {
 }
 /** Approved domain semantics; not an approved REST resource. */
 export interface Transaction {
+  mcc: string; // original bank MCC, never overwritten by category edits
   bankId: string;
   timestamp: string; // RFC3339 instant in this frontend model
   operationAmountMinor: number;

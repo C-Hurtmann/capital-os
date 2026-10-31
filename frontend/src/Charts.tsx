@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import {
   Area,
   AreaChart,
@@ -16,71 +16,39 @@ import {
 import type { Dashboard } from "./contracts";
 import { money, monthLabel, shortDate } from "./format";
 const colors = [
-  "#286448",
+  "#6eb594",
   "#b17a38",
   "#567a9b",
   "#8c6596",
   "#8a7736",
   "#677773",
 ];
-function DataTable({
-  headers,
-  rows,
+export default function Charts({
+  data,
+  historyControls,
 }: {
-  headers: string[];
-  rows: (string | number)[][];
+  data: Dashboard;
+  historyControls: ReactNode;
 }) {
-  return (
-    <details className="data-table">
-      <summary>Переглянути дані таблицею</summary>
-      <div className="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              {headers.map((h) => (
-                <th key={h} scope="col">
-                  {h}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((row, i) => (
-              <tr key={i}>
-                {row.map((v, j) => (
-                  <td key={j}>{v}</td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </details>
-  );
-}
-export default function Charts({ data }: { data: Dashboard }) {
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const selected = data.categories.find((c) => c.id === activeCategory);
-  const net = data.overview.incomeMinor - data.overview.expenseMinor;
+
   return (
     <>
       <div className="chart-grid">
         <section className="panel timeline">
           <div className="panel-heading">
             <div>
-              <span className="eyebrow">ВАШІ КОШТИ В ЧАСІ</span>
-              <h2>Динаміка балансу</h2>
+              <span className="eyebrow">YOUR ACCOUNT OVER TIME</span>
+              <h2>Balance History</h2>
             </div>
             <span className="unit">UAH</span>
           </div>
-          <div className="chart-value">
-            {money(data.overview.closingBalanceMinor)}
-            <span>на кінець періоду</span>
-          </div>
+          {historyControls}
           <div
             className="chart"
             role="group"
-            aria-label="Графік щоденного балансу. Стрілки вліво та вправо для перегляду."
+            aria-label="Daily account balance. Use left and right arrow keys to explore."
           >
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
@@ -99,7 +67,7 @@ export default function Charts({ data }: { data: Dashboard }) {
                 </defs>
                 <CartesianGrid
                   vertical={false}
-                  stroke="#e7ebe7"
+                  stroke="#303b38"
                   strokeDasharray="3 4"
                 />
                 <XAxis
@@ -108,51 +76,44 @@ export default function Charts({ data }: { data: Dashboard }) {
                   minTickGap={45}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "#63716b", fontSize: 11 }}
+                  tick={{ fill: "#a5b4ae", fontSize: 11 }}
                 />
                 <YAxis
                   width={54}
-                  tickFormatter={(v) => `${Math.round(v / 100000)} тис.`}
+                  tickFormatter={(v) => `${Math.round(v / 100000)} k`}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "#63716b", fontSize: 11 }}
+                  tick={{ fill: "#a5b4ae", fontSize: 11 }}
                   domain={["auto", "auto"]}
                 />
                 <Tooltip
                   labelFormatter={(v) => shortDate(String(v))}
-                  formatter={(v) => [money(Number(v)), "Баланс"]}
+                  formatter={(v) => [money(Number(v)), "Balance"]}
                   contentStyle={{
                     borderRadius: 10,
-                    border: "1px solid #d5ded7",
+                    border: "1px solid #47554f",
                   }}
                 />
                 <Area
                   type="monotone"
                   dataKey="balanceMinor"
-                  stroke="#286448"
+                  stroke="#6eb594"
                   strokeWidth={2.5}
                   fill="url(#balanceFill)"
-                  name="Баланс"
+                  name="Balance"
                   isAnimationActive={false}
                 />
               </AreaChart>
             </ResponsiveContainer>
           </div>
-          <DataTable
-            headers={["Дата", "Баланс"]}
-            rows={data.timeline.map((t) => [
-              shortDate(t.date),
-              money(t.balanceMinor),
-            ])}
-          />
         </section>
         <section className="panel breakdown">
           <div className="panel-heading">
             <div>
-              <span className="eyebrow">СТРУКТУРА ВИТРАТ</span>
-              <h2>На що йдуть кошти</h2>
+              <span className="eyebrow">OCTOBER 2026 · MONTH TO DATE</span>
+              <h2>Spending by Category</h2>
             </div>
-            <span className="unit">MCC</span>
+            <span className="unit">UAH</span>
           </div>
           {data.categories.length ? (
             <>
@@ -168,6 +129,13 @@ export default function Charts({ data }: { data: Dashboard }) {
                         outerRadius="94%"
                         paddingAngle={3}
                         stroke="none"
+                        onClick={(_, index) =>
+                          setActiveCategory(
+                            data.categories[index].id === activeCategory
+                              ? null
+                              : data.categories[index].id,
+                          )
+                        }
                         isAnimationActive={false}
                       >
                         {data.categories.map((c, i) => (
@@ -184,8 +152,17 @@ export default function Charts({ data }: { data: Dashboard }) {
                     </PieChart>
                   </ResponsiveContainer>
                 </div>
-                <div className="donut-label">
-                  <span>{selected ? selected.label : "Усього витрат"}</span>
+                <div className="donut-label" aria-live="polite">
+                  <span>{selected ? selected.label : "Total spending"}</span>
+                  {selected && (
+                    <small>
+                      {Math.round(
+                        (selected.amountMinor / data.overview.expenseMinor) *
+                          100,
+                      )}
+                      % of monthly spending
+                    </small>
+                  )}
                   <strong>
                     {money(
                       selected
@@ -195,51 +172,42 @@ export default function Charts({ data }: { data: Dashboard }) {
                   </strong>
                 </div>
               </div>
-              <div className="category-list">
-                {data.categories.map((c, i) => (
-                  <button
-                    key={c.id}
-                    aria-pressed={activeCategory === c.id}
-                    onClick={() =>
-                      setActiveCategory(activeCategory === c.id ? null : c.id)
-                    }
-                  >
-                    <span className="category-name">
-                      <i style={{ background: colors[i % colors.length] }} />
+              <label className="category-picker">
+                Explore category
+                <select
+                  value={activeCategory || ""}
+                  onChange={(e) => setActiveCategory(e.target.value || null)}
+                >
+                  <option value="">Total spending</option>
+                  {data.categories.map((c) => (
+                    <option key={c.id} value={c.id}>
                       {c.label}
-                    </span>
-                    <span>
-                      {money(c.amountMinor)}{" "}
-                      <small>
-                        {Math.round(
-                          (c.amountMinor / data.overview.expenseMinor) * 100,
-                        )}
-                        %
-                      </small>
-                    </span>
-                  </button>
-                ))}
-              </div>
+                    </option>
+                  ))}
+                </select>
+              </label>
             </>
           ) : (
-            <div className="empty">За цей період витрат немає.</div>
+            <div className="empty">No spending this month.</div>
           )}
         </section>
       </div>
       <section className="panel monthly">
         <div className="panel-heading">
           <div>
-            <span className="eyebrow">ДОХОДИ ТА ВИТРАТИ</span>
-            <h2>Підсумки за місяцями</h2>
+            <span className="eyebrow">
+              LAST 12 MONTHS · CURRENT MONTH PARTIAL
+            </span>
+            <h2>Monthly Income & Expenses</h2>
           </div>
           <div className="legend">
             <span>
-              <i style={{ background: "#286448" }} />
-              Доходи
+              <i style={{ background: "#6eb594" }} />
+              Income
             </span>
             <span>
-              <i style={{ background: "#bd9866" }} />
-              Витрати
+              <i style={{ background: "#f28a89" }} />
+              Expenses
             </span>
           </div>
         </div>
@@ -247,7 +215,7 @@ export default function Charts({ data }: { data: Dashboard }) {
           <div
             className="chart monthly-chart"
             role="group"
-            aria-label="Порівняння доходів і витрат за місяцями"
+            aria-label="Monthly income and expenses comparison"
           >
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
@@ -257,7 +225,7 @@ export default function Charts({ data }: { data: Dashboard }) {
               >
                 <CartesianGrid
                   vertical={false}
-                  stroke="#e7ebe7"
+                  stroke="#303b38"
                   strokeDasharray="3 4"
                 />
                 <XAxis
@@ -265,32 +233,32 @@ export default function Charts({ data }: { data: Dashboard }) {
                   tickFormatter={monthLabel}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "#63716b", fontSize: 11 }}
+                  tick={{ fill: "#a5b4ae", fontSize: 11 }}
                 />
                 <YAxis
                   width={54}
-                  tickFormatter={(v) => `${Math.round(v / 100000)} тис.`}
+                  tickFormatter={(v) => `${Math.round(v / 100000)} k`}
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fill: "#63716b", fontSize: 11 }}
+                  tick={{ fill: "#a5b4ae", fontSize: 11 }}
                 />
                 <Tooltip
                   labelFormatter={(v) => monthLabel(String(v))}
                   formatter={(v, name) => [money(Number(v)), name]}
-                  cursor={{ fill: "#f2f5f1" }}
+                  cursor={{ fill: "#25312d" }}
                 />
                 <Bar
                   dataKey="incomeMinor"
-                  name="Доходи"
-                  fill="#286448"
+                  name="Income"
+                  fill="#6eb594"
                   radius={[4, 4, 0, 0]}
                   maxBarSize={42}
                   isAnimationActive={false}
                 />
                 <Bar
                   dataKey="expenseMinor"
-                  name="Витрати"
-                  fill="#bd9866"
+                  name="Expenses"
+                  fill="#f28a89"
                   radius={[4, 4, 0, 0]}
                   maxBarSize={42}
                   isAnimationActive={false}
@@ -298,30 +266,7 @@ export default function Charts({ data }: { data: Dashboard }) {
               </BarChart>
             </ResponsiveContainer>
           </div>
-          <aside className="cashflow">
-            <span className="eyebrow">ЧИСТИЙ ГРОШОВИЙ ПОТІК</span>
-            <strong className={net < 0 ? "negative" : ""}>
-              {net > 0 ? "+" : ""}
-              {money(net)}
-            </strong>
-            <p>
-              {net >= 0
-                ? "Доходи перевищують витрати. Різниця залишається для ваших цілей."
-                : "Витрати перевищують доходи за обраний період."}
-            </p>
-            <span className="transfer-note">
-              Внутрішні перекази не включено в доходи й витрати.
-            </span>
-          </aside>
         </div>
-        <DataTable
-          headers={["Місяць", "Доходи", "Витрати"]}
-          rows={data.months.map((m) => [
-            monthLabel(m.month),
-            money(m.incomeMinor),
-            money(m.expenseMinor),
-          ])}
-        />
       </section>
     </>
   );
