@@ -104,6 +104,7 @@ dependencies = [
 dev = [
     { name = "boto3-stubs", extra = ["dynamodb"] },
     { name = "httpx" },
+    { name = "mypy-boto3-dynamodb" },
     { name = "pre-commit" },
     { name = "pytest" },
     { name = "ruff" },
@@ -122,6 +123,7 @@ requires-dist = [
 dev = [
     { name = "boto3-stubs", extras = ["dynamodb"], specifier = ">=1.43.122" },
     { name = "httpx", specifier = ">=0.28.1" },
+    { name = "mypy-boto3-dynamodb", specifier = ">=1.43.116" },
     { name = "pre-commit", specifier = ">=4.7.0" },
     { name = "pytest", specifier = ">=9.2.0" },
     { name = "ruff", specifier = ">=0.17.3" },
