@@ -1,9 +1,11 @@
 from unittest.mock import Mock
 
+from pytest import MonkeyPatch
+
 from app.core.dynamodb import _create_dynamodb_client
 
 
-def test_dynamodb_client_is_cached(monkeypatch):
+def test_dynamodb_client_is_cached(monkeypatch: MonkeyPatch) -> None:
     client = Mock()
     boto3_client = Mock(return_value=client)
 
