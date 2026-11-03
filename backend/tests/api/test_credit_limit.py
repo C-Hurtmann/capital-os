@@ -1,6 +1,7 @@
 from datetime import UTC, datetime
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
+import pytest
 from fastapi.testclient import TestClient
 
 from app.api.credit_limit import get_credit_limit_repository
@@ -142,5 +143,86 @@ def test_post_credit_limit_uses_server_time_when_date_omitted() -> None:
         assert body["amountMinor"] == 5_000_000
         assert datetime.fromisoformat(body["effectiveFrom"]) == saved.effective_from
 
+    finally:
+        app.dependency_overrides.pop(get_credit_limit_repository, None)
+
+
+def test_repeated_post_without_date_updates_effective_from() -> None:
+    repository = Mock(spec=CreditLimitRepository)
+    repository.set_current.side_effect = lambda credit_limit: credit_limit
+
+    first_time = datetime(2026, 11, 3, 10, 0, tzinfo=UTC)
+    second_time = datetime(2026, 11, 3, 10, 1, tzinfo=UTC)
+
+    app.dependency_overrides[get_credit_limit_repository] = lambda: repository
+
+    try:
+        with patch("app.api.credit_limit.datetime") as mocked_datetime:
+            mocked_datetime.now.side_effect = [first_time, second_time]
+
+            with TestClient(app) as client:
+                first_response = client.post(
+                    "/api/v1/credit-limit",
+                    json={"amountMinor": 5_000_000},
+                )
+                second_response = client.post(
+                    "/api/v1/credit-limit",
+                    json={"amountMinor": 5_000_000},
+                )
+
+        assert first_response.status_code == 200
+        assert second_response.status_code == 200
+
+        assert repository.set_current.call_count == 2
+
+        first_saved = repository.set_current.call_args_list[0].args[0]
+        second_saved = repository.set_current.call_args_list[1].args[0]
+
+        assert first_saved.credit_limit_minor == second_saved.credit_limit_minor
+        assert first_saved.effective_from == first_time
+        assert second_saved.effective_from == second_time
+
+        assert (
+            datetime.fromisoformat(first_response.json()["effectiveFrom"]) == first_time
+        )
+        assert (
+            datetime.fromisoformat(second_response.json()["effectiveFrom"])
+            == second_time
+        )
+
+    finally:
+        app.dependency_overrides.pop(get_credit_limit_repository, None)
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {},
+        {"amountMinor": -1},
+        {"amountMinor": 2**53},
+        {"amountMinor": "5000000"},
+        {"amountMinor": 5.5},
+        {"amountMinor": True},
+        {"amountMinor": None},
+        {"amountMinor": 5_000_000, "effectiveFrom": None},
+        {"amountMinor": 5_000_000, "effectiveFrom": "invalid"},
+        {"amountMinor": 5_000_000, "accountId": "monobank-main"},
+    ],
+)
+def test_post_credit_limit_rejects_invalid_payload(
+    payload: dict[str, object],
+) -> None:
+    repository = Mock(spec=CreditLimitRepository)
+    app.dependency_overrides[get_credit_limit_repository] = lambda: repository
+
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/v1/credit-limit",
+                json=payload,
+            )
+
+        assert response.status_code == 422
+        repository.set_current.assert_not_called()
     finally:
         app.dependency_overrides.pop(get_credit_limit_repository, None)
