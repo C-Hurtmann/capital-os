@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 /** Small per-widget request lifecycle, not a shared resource cache. */
-export function useWidget<T>(load: (signal: AbortSignal) => Promise<T>) {
+export function useWidget<T>(
+  load: (signal: AbortSignal) => Promise<T>,
+  enabled = true,
+) {
   const [state, setState] = useState<{
     data?: T;
     loading: boolean;
@@ -8,6 +11,7 @@ export function useWidget<T>(load: (signal: AbortSignal) => Promise<T>) {
   }>({ loading: true, error: "" });
   const active = useRef<AbortController | null>(null);
   const reload = useCallback(async () => {
+    if (!enabled) return;
     active.current?.abort();
     const controller = new AbortController();
     active.current = controller;
@@ -25,7 +29,7 @@ export function useWidget<T>(load: (signal: AbortSignal) => Promise<T>) {
             error instanceof Error ? error.message : "Could not load data.",
         }));
     }
-  }, [load]);
+  }, [load, enabled]);
   useEffect(() => {
     void reload();
     return () => active.current?.abort();

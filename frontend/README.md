@@ -55,6 +55,10 @@ docs/api-contract-proposal.md distinguishes approved architecture/credit GET fro
 
 ## Local credit-limit GET integration
 
-Default remains fully synthetic. For an explicitly configured local backend, start Vite with `VITE_CREDIT_LIMIT_SOURCE=api` and `CAPITAL_API_TARGET=http://127.0.0.1:8001` (replace with the actual local backend address). Only `/api/v1/credit-limit` is proxied. The dashboard identifies this value as API data; other figures remain demo data. Server values never fall back to localStorage. Editing is disabled in API mode until PUT is agreed. Auth integration and production exposure remain pending; do not deploy this local integration as authenticated production.
+Default `npm run dev` remains fully synthetic. Run `npm run dev:api` to read the current credit limit from the local FastAPI at `http://127.0.0.1:8001`. Stop the previous frontend server first to keep port 5173, or pass `-- --port 5174 --strictPort` for a separate local preview.
+
+Vite proxies `/api` to port 8001; override with `CAPITAL_API_TARGET` when needed. Browser requests stay relative (`/api/v1/credit-limit`); no backend CORS change is needed. Only the existing credit-limit row uses the backend; all other widgets remain synthetic. No API requests are made for the credit limit while Transactions is active, including its Refresh action. Returning to Dashboard reloads it.
+
+The typed client validates null/zero/positive and UTC timestamps. A failed GET never falls back to demo localStorage. Existing demo editing remains demo-only; API mode is read-only, with no PUT. This is a local development integration; public authentication remains outside this change.
 
 The history cache is awaiting https://trello.com/c/3P9yMUG7. Demo preset boundaries and 3M default are fixtures, not settled calendar rules. No Custom Range remains in history; transaction dates remain available.

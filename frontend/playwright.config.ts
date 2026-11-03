@@ -11,7 +11,7 @@ export default defineConfig({
     },
     {
       command:
-        "VITE_CREDIT_LIMIT_SOURCE=api node node_modules/vite/bin/vite.js --host 127.0.0.1 --port 5178 --strictPort",
+        "node node_modules/vite/bin/vite.js --mode local-api --host 127.0.0.1 --port 5178 --strictPort",
       url: "http://127.0.0.1:5178",
       reuseExistingServer: false,
     },

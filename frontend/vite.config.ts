@@ -2,13 +2,19 @@ import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import { loadEnv } from "vite";
 export default defineConfig(({ mode }) => {
-  const target = loadEnv(mode, ".", "CAPITAL_").CAPITAL_API_TARGET;
+  const env = loadEnv(mode, ".", ["CAPITAL_", "VITE_"]);
+  const target = env.CAPITAL_API_TARGET || "http://127.0.0.1:8001";
+  const creditSource =
+    mode === "local-api" ? "api" : env.VITE_CREDIT_LIMIT_SOURCE || "demo";
   return {
     plugins: [react()],
+    define: {
+      "import.meta.env.VITE_CREDIT_LIMIT_SOURCE": JSON.stringify(creditSource),
+    },
     server: {
       proxy: target
         ? {
-            "/api/v1/credit-limit": {
+            "/api": {
               target: target,
               changeOrigin: true,
             },

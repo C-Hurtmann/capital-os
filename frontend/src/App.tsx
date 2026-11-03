@@ -47,7 +47,7 @@ export default function App() {
     [preset],
   );
   const history = useWidget(historyLoader);
-  const credit = useWidget(loadCredit);
+  const credit = useWidget(loadCredit, page === "dashboard");
   const reloadSpending = spending.reload;
   useEffect(() => {
     const change = () => {
@@ -232,7 +232,7 @@ export default function App() {
                     />
                     {liveCredit && (
                       <p className="helper">
-                        Credit limit from API · editing awaits PUT agreement.
+                        Credit limit from local backend · read only.
                       </p>
                     )}
                     <div className="limit-row">

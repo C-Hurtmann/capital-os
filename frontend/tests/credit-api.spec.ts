@@ -49,3 +49,28 @@ test("gateway error keeps other widgets usable and retry accepts unset", async (
     .click();
   await expect(page.locator(".limit-row")).toContainText("Not set");
 });
+
+test("positive limit loads only on the dashboard and remains read-only", async ({
+  page,
+}) => {
+  let requests = 0;
+  await page.route("**/api/v1/credit-limit", async (route) => {
+    requests++;
+    expect(route.request().method()).toBe("GET");
+    await route.fulfill({
+      json: { amountMinor: 1500000, effectiveFrom: "2026-11-03T09:00:00Z" },
+    });
+  });
+  await page.goto("/");
+  await expect(page.locator(".limit-row")).toContainText("15,000.00");
+  await page.getByRole("button", { name: "Transactions", exact: true }).click();
+  const before = requests;
+  await page.getByRole("button", { name: "Refresh demo", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Refresh demo", exact: true }),
+  ).toBeEnabled();
+  expect(requests).toBe(before);
+  await page.getByRole("button", { name: "Dashboard", exact: true }).click();
+  await expect.poll(() => requests).toBeGreaterThan(before);
+  await expect(page.locator(".limit-row")).toContainText("15,000.00");
+});
