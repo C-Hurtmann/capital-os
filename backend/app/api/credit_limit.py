@@ -1,30 +1,15 @@
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
-from pydantic import AwareDatetime, BaseModel, Field, model_validator
 
 from app.core.dynamodb import get_dynamodb_client
 from app.core.settings import Settings
 from app.repositories.credit_limit import CreditLimitRepository
+from app.schemas.credit_limit import CreditLimitResponse
 
 router = APIRouter(prefix="/api/v1", tags=["Credit Limit"])
 
 ACCOUNT_ID = "monobank-main"
-
-
-class CreditLimitResponse(BaseModel):
-    amount_minor: int | None = Field(
-        ge=0,
-        le=2**53 - 1,  # JS restriction
-        serialization_alias="amountMinor",
-    )
-    effective_from: AwareDatetime | None = Field(serialization_alias="effectiveFrom")
-
-    @model_validator(mode="after")
-    def validate_fields(self) -> CreditLimitResponse:
-        if (self.amount_minor is None) != (self.effective_from is None):
-            raise ValueError("Both fields must be null or non-null")
-        return self
 
 
 def get_credit_limit_repository(
