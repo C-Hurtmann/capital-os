@@ -1,7 +1,9 @@
 from datetime import UTC, datetime
 from unittest.mock import Mock, patch
+from uuid import UUID
 
 import pytest
+from botocore.exceptions import ClientError
 from fastapi.testclient import TestClient
 
 from app.api.credit_limit import get_credit_limit_repository
@@ -224,5 +226,165 @@ def test_post_credit_limit_rejects_invalid_payload(
 
         assert response.status_code == 422
         repository.set_current.assert_not_called()
+    finally:
+        app.dependency_overrides.pop(get_credit_limit_repository, None)
+
+
+def test_post_credit_limit_validation_error_returns_problem_details() -> None:
+    repository = Mock(spec=CreditLimitRepository)
+    app.dependency_overrides[get_credit_limit_repository] = lambda: repository
+
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/v1/credit-limit",
+                json={"amountMinor": -1},
+            )
+
+        assert response.status_code == 422
+        assert response.headers["content-type"] == "application/problem+json"
+
+        body = response.json()
+
+        assert set(body) == {
+            "type",
+            "title",
+            "status",
+            "detail",
+            "requestId",
+        }
+        assert body["type"] == "about:blank"
+        assert body["title"] == "Unprocessable Content"
+        assert body["status"] == 422
+        assert body["detail"] == "Request validation failed"
+
+        UUID(body["requestId"])
+
+        repository.set_current.assert_not_called()
+    finally:
+        app.dependency_overrides.pop(get_credit_limit_repository, None)
+
+
+def test_post_credit_limit_malformed_json_returns_problem_details() -> None:
+    repository = Mock(spec=CreditLimitRepository)
+    app.dependency_overrides[get_credit_limit_repository] = lambda: repository
+
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/v1/credit-limit",
+                content='{"amountMinor":',
+                headers={"Content-Type": "application/json"},
+            )
+
+        assert response.status_code == 400
+        assert response.headers["content-type"] == "application/problem+json"
+
+        body = response.json()
+
+        assert body["type"] == "about:blank"
+        assert body["title"] == "Bad Request"
+        assert body["status"] == 400
+        assert body["detail"] == "Malformed JSON request body"
+        UUID(body["requestId"])
+
+        repository.set_current.assert_not_called()
+    finally:
+        app.dependency_overrides.pop(get_credit_limit_repository, None)
+
+
+def test_post_credit_limit_rejects_unsupported_content_type() -> None:
+    repository = Mock(spec=CreditLimitRepository)
+    app.dependency_overrides[get_credit_limit_repository] = lambda: repository
+
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/v1/credit-limit",
+                content='{"amountMinor": 5000000}',
+                headers={"Content-Type": "text/plain"},
+            )
+
+        assert response.status_code == 415
+        assert response.headers["content-type"] == "application/problem+json"
+
+        body = response.json()
+
+        assert body["type"] == "about:blank"
+        assert body["title"] == "Unsupported Media Type"
+        assert body["status"] == 415
+        assert body["detail"] == "Content-Type must be application/json"
+        UUID(body["requestId"])
+
+        repository.set_current.assert_not_called()
+    finally:
+        app.dependency_overrides.pop(get_credit_limit_repository, None)
+
+
+def test_post_credit_limit_dynamodb_unavailable_returns_503() -> None:
+    repository = Mock(spec=CreditLimitRepository)
+    repository.set_current.side_effect = ClientError(
+        {
+            "Error": {
+                "Code": "ProvisionedThroughputExceededException",
+                "Message": "Throughput exceeded",
+            }
+        },
+        "UpdateItem",
+    )
+
+    app.dependency_overrides[get_credit_limit_repository] = lambda: repository
+
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.post(
+                "/api/v1/credit-limit",
+                json={"amountMinor": 5_000_000},
+            )
+
+        assert response.status_code == 503
+        assert response.headers["content-type"] == "application/problem+json"
+
+        body = response.json()
+
+        assert body["type"] == "about:blank"
+        assert body["title"] == "Service Unavailable"
+        assert body["status"] == 503
+        assert body["detail"] == "Credit limit storage is temporarily unavailable"
+        UUID(body["requestId"])
+
+        repository.set_current.assert_called_once()
+    finally:
+        app.dependency_overrides.pop(get_credit_limit_repository, None)
+
+
+def test_post_credit_limit_unexpected_error_returns_500() -> None:
+    repository = Mock(spec=CreditLimitRepository)
+    repository.set_current.side_effect = RuntimeError(
+        "Internal database connection details"
+    )
+
+    app.dependency_overrides[get_credit_limit_repository] = lambda: repository
+
+    try:
+        with TestClient(app, raise_server_exceptions=False) as client:
+            response = client.post(
+                "/api/v1/credit-limit",
+                json={"amountMinor": 5_000_000},
+            )
+
+        assert response.status_code == 500
+        assert response.headers["content-type"] == "application/problem+json"
+
+        body = response.json()
+
+        assert body["type"] == "about:blank"
+        assert body["title"] == "Internal Server Error"
+        assert body["status"] == 500
+        assert body["detail"] == "An unexpected error occurred"
+        UUID(body["requestId"])
+
+        assert "Internal database connection details" not in response.text
+        repository.set_current.assert_called_once()
     finally:
         app.dependency_overrides.pop(get_credit_limit_repository, None)

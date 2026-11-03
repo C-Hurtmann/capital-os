@@ -1,7 +1,8 @@
 from datetime import UTC, datetime
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends
+from botocore.exceptions import ClientError
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from app.core.dynamodb import get_dynamodb_client
 from app.core.settings import Settings
@@ -37,7 +38,22 @@ def get_credit_limit(
     )
 
 
-@router.post("/credit-limit", response_model=CreditLimitResponse)
+def require_json_content_type(request: Request) -> None:
+    content_type = request.headers.get("content-type", "")
+    media_type = content_type.split(";", 1)[0].strip().lower()
+
+    if media_type != "application/json":
+        raise HTTPException(
+            status_code=415,
+            detail="Content-Type must be application/json",
+        )
+
+
+@router.post(
+    "/credit-limit",
+    response_model=CreditLimitResponse,
+    dependencies=[Depends(require_json_content_type)],
+)
 def post_credit_limit(
     request: PostCreditLimitRequest,
     repository: Annotated[CreditLimitRepository, Depends(get_credit_limit_repository)],
@@ -48,7 +64,19 @@ def post_credit_limit(
         effective_from=request.effective_from or datetime.now(UTC),
     )
 
-    saved = repository.set_current(credit_limit)
+    try:
+        saved = repository.set_current(credit_limit)
+    except ClientError as exc:
+        if exc.response["Error"]["Code"] in {
+            "ProvisionedThroughputExceededException",
+            "ThrottlingException",
+            "RequestLimitExceeded",
+        }:
+            raise HTTPException(
+                status_code=503,
+                detail="Credit limit storage is temporarily unavailable",
+            ) from exc
+        raise
 
     return CreditLimitResponse(
         amount_minor=saved.credit_limit_minor,
