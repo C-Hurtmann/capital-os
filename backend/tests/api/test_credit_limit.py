@@ -77,3 +77,70 @@ def test_get_credit_limit_when_zero() -> None:
         }
     finally:
         app.dependency_overrides.pop(get_credit_limit_repository, None)
+
+
+def test_post_credit_limit_with_explicit_date() -> None:
+    credit_limit = CreditLimit(
+        account_id="monobank-main",
+        credit_limit_minor=5_000_000,
+        effective_from=datetime(2026, 10, 15, 9, 0, tzinfo=UTC),
+    )
+
+    repository = Mock(spec=CreditLimitRepository)
+    repository.set_current.return_value = credit_limit
+
+    app.dependency_overrides[get_credit_limit_repository] = lambda: repository
+
+    try:
+        with TestClient(app) as client:
+            response = client.post(
+                "/api/v1/credit-limit",
+                json={
+                    "amountMinor": 5_000_000,
+                    "effectiveFrom": "2026-10-15T12:00:00+03:00",
+                },
+            )
+
+        assert response.status_code == 200
+        assert response.json() == {
+            "amountMinor": 5_000_000,
+            "effectiveFrom": "2026-10-15T09:00:00Z",
+        }
+        repository.set_current.assert_called_once_with(credit_limit)
+    finally:
+        app.dependency_overrides.pop(get_credit_limit_repository, None)
+
+
+def test_post_credit_limit_uses_server_time_when_date_omitted() -> None:
+    repository = Mock(spec=CreditLimitRepository)
+    repository.set_current.side_effect = lambda credit_limit: credit_limit
+
+    app.dependency_overrides[get_credit_limit_repository] = lambda: repository
+
+    try:
+        with TestClient(app) as client:
+            before = datetime.now(UTC)
+
+            response = client.post(
+                "/api/v1/credit-limit",
+                json={"amountMinor": 5_000_000},
+            )
+
+            after = datetime.now(UTC)
+
+        assert response.status_code == 200
+
+        repository.set_current.assert_called_once()
+        saved = repository.set_current.call_args.args[0]
+
+        assert isinstance(saved, CreditLimit)
+        assert saved.credit_limit_minor == 5_000_000
+        assert saved.account_id == "monobank-main"
+        assert before <= saved.effective_from <= after
+
+        body = response.json()
+        assert body["amountMinor"] == 5_000_000
+        assert datetime.fromisoformat(body["effectiveFrom"]) == saved.effective_from
+
+    finally:
+        app.dependency_overrides.pop(get_credit_limit_repository, None)
