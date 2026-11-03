@@ -18,7 +18,7 @@ Open http://localhost:5173. The synthetic snapshot is fixed to 29 October 2026, 
 
 - Spacious dashboard composition, dark graphite surfaces and forest main card.
 - Current Balance and Actual Monthly Net Cashflow, with labeled green income and red expenses.
-- Independent Balance History range: 3 / 6 months, 1 year, All, Custom. Three months is a review default, not a newly approved product decision.
+- Independent Balance History range: 1M / 3M / 6M / 12M / All. Three months is a review default, not a newly approved product decision.
 - Last 12 calendar months including the partial current month; current-month categories with selectable donut and exact values.
 - Transactions: date, absolute UAH amount, direction and category filters; 20-row pagination; operation details and immutable bank MCC; original EUR amounts for synthetic foreign purchases.
 - Category overrides and manually entered current credit limit persist locally. Saving categories updates category analytics without changing bank amounts or balances.
@@ -36,7 +36,7 @@ The fixed category list is provisional and includes Credit. Final tokens, mobile
 
 ## Architecture
 
-React + strict TypeScript + Vite, Recharts, Lucide, plain CSS. No new dependencies. App composes dashboard/navigation; Charts is lazy-loaded; Transactions owns filters and operation-detail state; data owns synthetic fixtures and aggregates. Browser storage contains only demo overrides and the entered limit, never tokens. The current two-view navigation is a review implementation; URL routing/session integration should be agreed for production.
+React + strict TypeScript + Vite, Recharts, Lucide, plain CSS. No new dependencies. App composes dashboard/navigation; Charts exposes independent history/spending/monthly components; Transactions owns filters and operation-detail state; mockResources supplies independent asynchronous widget data; data owns synthetic fixtures and aggregates. useWidget manages per-widget requests and rejects cancelled responses; it is not a cache. Browser storage contains only demo overrides and the entered limit, never tokens. The current two-view navigation is a review implementation; URL routing/session integration should be agreed for production.
 
 ## Checks
 
@@ -51,4 +51,10 @@ npm run test:e2e
 
 Browser tests exercise responsive overflow, axe checks, independent history ranges, category persistence and offline refresh. Screenshots are in ignored test-results/review-{width}.png. Browser and automated accessibility coverage do not establish full WCAG conformance.
 
-The updated API proposal in docs/api-contract-proposal.md covers the current MVP and remains PROPOSED. The demo view model is not an approved REST schema.
+docs/api-contract-proposal.md distinguishes approved architecture/credit GET from pending contracts. The demo view model is not an approved REST schema.
+
+## Local credit-limit GET integration
+
+Default remains fully synthetic. For an explicitly configured local backend, start Vite with `VITE_CREDIT_LIMIT_SOURCE=api` and `CAPITAL_API_TARGET=http://127.0.0.1:8001` (replace with the actual local backend address). Only `/api/v1/credit-limit` is proxied. The dashboard identifies this value as API data; other figures remain demo data. Server values never fall back to localStorage. Editing is disabled in API mode until PUT is agreed. Auth integration and production exposure remain pending; do not deploy this local integration as authenticated production.
+
+The history cache is awaiting https://trello.com/c/3P9yMUG7. Demo preset boundaries and 3M default are fixtures, not settled calendar rules. No Custom Range remains in history; transaction dates remain available.

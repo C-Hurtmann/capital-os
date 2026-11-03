@@ -7,6 +7,7 @@ for (const width of [375, 768, 1440, 1920])
     await expect(
       page.getByRole("heading", { name: "Balance History" }),
     ).toBeVisible();
+    await expect(page.getByLabel("Explore category")).toBeVisible();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -31,10 +32,17 @@ test("history selection leaves current-month figures unchanged", async ({
   await expect(
     page.getByRole("heading", { name: "Balance History" }),
   ).toBeVisible();
+  await expect(page.getByLabel("Explore category")).toBeVisible();
   const monthly = await page.locator(".net-card").textContent();
-  await page.getByRole("button", { name: "All history", exact: true }).click();
+  await page.getByRole("button", { name: "All", exact: true }).click();
   await expect(page.locator(".net-card")).toHaveText(monthly!);
   await page.getByLabel("Explore category").selectOption("credit");
+  await expect(
+    page.getByRole("button", { name: "Custom", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "1M", exact: true }),
+  ).toBeVisible();
   await expect(page.locator(".donut-label")).toContainText("Credit");
 });
 test("transaction filters and persistent categorization preserve bank values", async ({
@@ -90,6 +98,7 @@ test("credit drawer preserves card geometry and restores focus", async ({
 }) => {
   await page.goto("/");
   const card = page.locator(".metric.balance");
+  await expect(page.getByRole("button", { name: "Edit limit" })).toBeEnabled();
   const before = await card.boundingBox();
   await page.getByRole("button", { name: "Edit limit" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
@@ -102,4 +111,53 @@ test("credit drawer preserves card geometry and restores focus", async ({
   await page.keyboard.press("Escape");
   await expect(page.getByRole("button", { name: "Edit limit" })).toBeFocused();
   await expect(page.getByText("View data table")).toHaveCount(0);
+});
+
+test("history errors and retries are isolated and retain the actual old interval", async ({
+  page,
+  context,
+}) => {
+  await page.goto("/");
+  await expect(page.getByLabel("Explore category")).toBeVisible();
+  const monthly = await page.locator(".net-card").textContent();
+  const oldPeriod = await page.locator(".range-label").textContent();
+  await context.setOffline(true);
+  await page.getByRole("button", { name: "All", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Retry history", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".range-label")).toHaveText(oldPeriod!);
+  await expect(page.locator(".net-card")).toHaveText(monthly!);
+  await expect(
+    page.getByRole("button", { name: "Retry cashflow", exact: true }),
+  ).toHaveCount(0);
+  await context.setOffline(false);
+  await page
+    .getByRole("button", { name: "Retry history", exact: true })
+    .click();
+  await expect(page.locator(".range-label")).toContainText("1 Jan");
+  await page.getByRole("button", { name: "12M", exact: true }).click();
+  await page.getByRole("button", { name: "1M", exact: true }).click();
+  await expect(page.locator(".range-label")).toContainText("1 Oct");
+});
+test("malformed credit value fails independently and never becomes zero", async ({
+  page,
+}) => {
+  await page.addInitScript(() =>
+    localStorage.setItem("capital-demo-credit-limit", "broken"),
+  );
+  await page.goto("/");
+  await expect(page.getByLabel("Explore category")).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Retry credit limit", exact: true }),
+  ).toBeVisible();
+  await expect(page.locator(".limit-row")).toContainText("Unavailable");
+  await page.evaluate(() =>
+    localStorage.setItem("capital-demo-credit-limit", "0"),
+  );
+  await page
+    .getByRole("button", { name: "Retry credit limit", exact: true })
+    .click();
+  await expect(page.locator(".limit-row")).toContainText("0.00");
+  await expect(page.locator(".limit-row")).not.toContainText("Not set");
 });

@@ -1,4 +1,4 @@
-/** Provisional API schemas. Approval status and semantics: docs/api-contract-proposal.md. */
+/** Synthetic demo models only. NOT REST API contracts. */
 export interface Account {
   id: string;
   name: string;
@@ -49,4 +49,41 @@ export interface Transaction {
   amountMinor: number;
   category: string;
   transfer?: boolean;
+}
+
+/** Approved successful GET /api/v1/credit-limit response. */
+export type CreditLimitResponse =
+  | { amountMinor: number; effectiveFrom: string }
+  | { amountMinor: null; effectiveFrom: null };
+export type HistoryPreset = "1M" | "3M" | "6M" | "12M" | "All";
+/** Widget view models; provisional until each analytics DTO is agreed. */
+export interface PeriodMeta {
+  from: string;
+  to: string;
+  asOf: string;
+  coverage: "complete" | "partial" | "unavailable";
+  timeZone: "Europe/Kyiv";
+}
+export interface BalanceView {
+  amountMinor: number | null;
+  asOf: string;
+}
+export interface CashflowView extends PeriodMeta {
+  incomeMinor: number | null;
+  expenseMinor: number | null;
+  netMinor: number | null;
+}
+export interface HistoryView extends PeriodMeta {
+  points: { date: string; balanceMinor: number | null }[];
+}
+export interface SpendingView extends PeriodMeta {
+  totalMinor: number | null;
+  categories: Dashboard["categories"];
+}
+export interface MonthlyView extends PeriodMeta {
+  months: {
+    month: string;
+    incomeMinor: number | null;
+    expenseMinor: number | null;
+  }[];
 }

@@ -1,5 +1,5 @@
 import CreditDrawer from "./CreditDrawer";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 import {
   Layers3,
   LayoutDashboard,
@@ -8,61 +8,66 @@ import {
   ArrowUpRight,
   Wallet,
 } from "lucide-react";
-import { aggregate, DEMO_TODAY, validateQuery } from "./data";
+import type { HistoryPreset } from "./contracts";
+
+import {
+  loadBalance,
+  loadCashflow,
+  loadHistory,
+  loadMonthly,
+  loadSpending,
+  loadCredit,
+  liveCredit,
+} from "./mockResources";
+import { useWidget } from "./useWidget";
+import WidgetStatus from "./WidgetStatus";
 import { money, shortDate } from "./format";
 import Transactions from "./Transactions";
-const Charts = lazy(() => import("./Charts"));
-const initial = { from: "2026-08-01", to: DEMO_TODAY, currency: "UAH" };
+const HistoryChart = lazy(() =>
+  import("./Charts").then((m) => ({ default: m.HistoryChart })),
+);
+const MonthlyChart = lazy(() =>
+  import("./Charts").then((m) => ({ default: m.MonthlyChart })),
+);
+const SpendingChart = lazy(() =>
+  import("./Charts").then((m) => ({ default: m.SpendingChart })),
+);
 export default function App() {
   const [page, setPage] = useState("dashboard"),
-    [query, setQuery] = useState(initial),
-    [draft, setDraft] = useState(initial),
-    [preset, setPreset] = useState("3"),
-    [error, setError] = useState(""),
+    [preset, setPreset] = useState<HistoryPreset>("3M"), // Review default; pending approval.
     [sync, setSync] = useState("idle"),
-    [revision, setRevision] = useState(0),
     [lastSync, setLastSync] = useState(""),
-    [limit, setLimit] = useState(
-      () => localStorage.getItem("capital-demo-credit-limit") || "",
-    ),
     [editing, setEditing] = useState(false);
+  const balance = useWidget(loadBalance);
+  const cashflow = useWidget(loadCashflow);
+  const spending = useWidget(loadSpending);
+  const monthly = useWidget(loadMonthly);
+  const historyLoader = useCallback(
+    (signal: AbortSignal) => loadHistory(preset, signal),
+    [preset],
+  );
+  const history = useWidget(historyLoader);
+  const credit = useWidget(loadCredit);
+  const reloadSpending = spending.reload;
   useEffect(() => {
-    const change = () => setRevision((r) => r + 1);
+    const change = () => {
+      void reloadSpending();
+    };
     window.addEventListener("capital-category-change", change);
     return () => window.removeEventListener("capital-category-change", change);
-  }, []);
-  // Review build intentionally uses synthetic data; it does not call unapproved endpoints.
-  void revision;
-  const current = aggregate({
-    from: "2026-10-01",
-    to: DEMO_TODAY,
-    currency: "UAH",
-  });
-  const history = aggregate(query);
-  const annual = aggregate({
-    from: "2025-11-01",
-    to: DEMO_TODAY,
-    currency: "UAH",
-  });
-  const net = current.overview.incomeMinor - current.overview.expenseMinor;
-  function period(value: string) {
-    setPreset(value);
-    if (value === "custom") return;
-    const from =
-      value === "3"
-        ? "2026-08-01"
-        : value === "6"
-          ? "2026-05-01"
-          : value === "12"
-            ? "2025-10-30"
-            : "2025-01-01";
-    setQuery({ ...initial, from });
-    setDraft({ ...initial, from });
-    setError("");
-  }
+  }, [reloadSpending]);
+  const net = cashflow.data?.netMinor ?? null;
+  const limit = credit.data?.amountMinor;
   async function refresh() {
     setSync("loading");
-    await new Promise((r) => setTimeout(r, 650));
+    // Independent resource lifecycles: no all-or-nothing dashboard request.
+    void balance.reload();
+    void cashflow.reload();
+    void spending.reload();
+    void monthly.reload();
+    void history.reload();
+    void credit.reload();
+    await new Promise((resolve) => setTimeout(resolve, 650));
     if (!navigator.onLine) {
       setSync("error");
       return;
@@ -77,71 +82,23 @@ export default function App() {
         role="group"
         aria-label="Balance history period"
       >
-        {[
-          ["3", "3 months"],
-          ["6", "6 months"],
-          ["12", "1 year"],
-          ["all", "All history"],
-          ["custom", "Custom"],
-        ].map(([value, label]) => (
+        {(["1M", "3M", "6M", "12M", "All"] as const).map((value) => (
           <button
             key={value}
             aria-pressed={preset === value}
-            onClick={() => period(value)}
+            onClick={() => setPreset(value)}
           >
-            {label}
+            {value}
           </button>
         ))}
       </div>
-      {preset === "custom" && (
-        <form
-          className="custom-range"
-          onSubmit={(e) => {
-            e.preventDefault();
-            try {
-              validateQuery(draft);
-              setQuery(draft);
-              setError("");
-            } catch (e) {
-              setError((e as Error).message);
-            }
-          }}
-        >
-          <label>
-            From
-            <input
-              type="date"
-              required
-              min="2025-01-01"
-              max={DEMO_TODAY}
-              value={draft.from}
-              onChange={(e) =>
-                setDraft((d) => ({ ...d, from: e.target.value }))
-              }
-            />
-          </label>
-          <label>
-            To
-            <input
-              type="date"
-              required
-              min="2025-01-01"
-              max={DEMO_TODAY}
-              value={draft.to}
-              onChange={(e) => setDraft((d) => ({ ...d, to: e.target.value }))}
-            />
-          </label>
-          <button className="primary">Apply dates</button>
-        </form>
-      )}
-      {error && (
-        <p className="error" role="alert">
-          {error}
+      {history.data && (
+        <p className="range-label">
+          {shortDate(history.data.from)} – {shortDate(history.data.to)} ·
+          History only · {history.data.coverage} · As of{" "}
+          {shortDate(history.data.asOf)}
         </p>
       )}
-      <p className="range-label">
-        {shortDate(query.from)} – {shortDate(query.to)} · History only
-      </p>
     </>
   );
   return (
@@ -249,10 +206,17 @@ export default function App() {
                       Current Balance
                       <Wallet size={20} />
                     </div>
-                    <strong>
-                      {money(current.overview.currentBalanceMinor)}
-                    </strong>
-                    <span>Monobank · UAH · As of {shortDate(DEMO_TODAY)}</span>
+                    <WidgetStatus
+                      name="balance"
+                      {...balance}
+                      hasData={!!balance.data}
+                      retry={balance.reload}
+                    />
+                    <strong>{money(balance.data?.amountMinor ?? null)}</strong>
+                    <span>
+                      Monobank · UAH · As of{" "}
+                      {balance.data ? shortDate(balance.data.asOf) : "unknown"}
+                    </span>
                     <div className="balance-detail">
                       <span>Own funds / credit used</span>
                       <span>Not yet determined</span>
@@ -260,13 +224,31 @@ export default function App() {
                     <p className="helper">
                       Bank balance breakdown awaits confirmed bank semantics.
                     </p>
+                    <WidgetStatus
+                      name="credit limit"
+                      {...credit}
+                      hasData={!!credit.data}
+                      retry={credit.reload}
+                    />
+                    {liveCredit && (
+                      <p className="helper">
+                        Credit limit from API · editing awaits PUT agreement.
+                      </p>
+                    )}
                     <div className="limit-row">
                       <span>
                         Entered credit limit:{" "}
-                        {limit ? money(Number(limit)) : "Not set"}
+                        {credit.data
+                          ? limit === null
+                            ? "Not set"
+                            : money(limit ?? null)
+                          : credit.loading
+                            ? "Loading…"
+                            : "Unavailable"}
                       </span>
                       <button
                         id="edit-credit-limit"
+                        disabled={liveCredit || !credit.data}
                         onClick={() => setEditing(!editing)}
                         aria-expanded={editing}
                       >
@@ -279,22 +261,38 @@ export default function App() {
                       Actual Monthly Net Cashflow
                       <ArrowUpRight size={20} />
                     </div>
-                    <strong className={net < 0 ? "negative" : "positive"}>
-                      {net >= 0 ? "+" : ""}
+                    <WidgetStatus
+                      name="cashflow"
+                      {...cashflow}
+                      hasData={!!cashflow.data}
+                      retry={cashflow.reload}
+                    />
+                    <strong
+                      className={
+                        net === null ? "" : net < 0 ? "negative" : "positive"
+                      }
+                    >
+                      {net !== null && net >= 0 ? "+" : ""}
                       {money(net)}
                     </strong>
-                    <span>October 2026 · Month to date</span>
+                    <span>
+                      {cashflow.data
+                        ? `${shortDate(cashflow.data.from)} – ${shortDate(cashflow.data.to)} · Month to date`
+                        : "Current calendar month"}
+                    </span>
                     <div className="cashflow-rows">
                       <div>
                         <span>Income</span>
                         <b className="positive">
-                          +{money(current.overview.incomeMinor)}
+                          {cashflow.data?.incomeMinor != null ? "+" : ""}
+                          {money(cashflow.data?.incomeMinor ?? null)}
                         </b>
                       </div>
                       <div>
                         <span>Expenses</span>
                         <b className="negative">
-                          −{money(current.overview.expenseMinor)}
+                          {cashflow.data?.expenseMinor != null ? "−" : ""}
+                          {money(cashflow.data?.expenseMinor ?? null)}
                         </b>
                       </div>
                     </div>
@@ -304,36 +302,99 @@ export default function App() {
                     </p>
                   </article>
                 </section>
-                <Suspense
-                  fallback={
-                    <div className="loading" role="status">
-                      Loading charts…
-                    </div>
-                  }
-                >
-                  <Charts
-                    data={{
-                      ...current,
-                      timeline: history.timeline,
-                      overview: {
-                        ...current.overview,
-                        closingBalanceMinor:
-                          history.overview.closingBalanceMinor,
-                      },
-                      months: annual.months,
-                    }}
-                    historyControls={filters}
+                <div className="resource-history">
+                  <WidgetStatus
+                    name="history"
+                    {...history}
+                    hasData={!!history.data}
+                    retry={history.reload}
                   />
-                </Suspense>
+                  {history.data ? (
+                    <Suspense
+                      fallback={
+                        <section className="panel timeline">
+                          <h2>Balance History</h2>
+                          {filters}
+                          <div className="chart" />
+                        </section>
+                      }
+                    >
+                      <HistoryChart
+                        data={history.data}
+                        historyControls={filters}
+                      />
+                    </Suspense>
+                  ) : (
+                    <section className="panel timeline">
+                      <h2>Balance History</h2>
+                      {filters}
+                      <div className="chart" />
+                    </section>
+                  )}
+                </div>
+                <div className="resource-monthly">
+                  <WidgetStatus
+                    name="monthly cashflow"
+                    {...monthly}
+                    hasData={!!monthly.data}
+                    retry={monthly.reload}
+                  />
+                  {monthly.data ? (
+                    <Suspense
+                      fallback={
+                        <section className="panel monthly">
+                          <h2>Monthly Income &amp; Expenses</h2>
+                          <div className="chart" />
+                        </section>
+                      }
+                    >
+                      <MonthlyChart data={monthly.data} />
+                    </Suspense>
+                  ) : (
+                    <section className="panel monthly">
+                      <h2>Monthly Income &amp; Expenses</h2>
+                      <div className="chart" />
+                    </section>
+                  )}
+                </div>
+                <div className="resource-spending">
+                  <WidgetStatus
+                    name="spending"
+                    {...spending}
+                    hasData={!!spending.data}
+                    retry={spending.reload}
+                  />
+                  {spending.data ? (
+                    <Suspense
+                      fallback={
+                        <section className="panel breakdown">
+                          <h2>Spending by Category</h2>
+                          <div className="donut-wrap" />
+                        </section>
+                      }
+                    >
+                      <SpendingChart data={spending.data} />
+                    </Suspense>
+                  ) : (
+                    <section className="panel breakdown">
+                      <h2>Spending by Category</h2>
+                      <div className="donut-wrap" />
+                    </section>
+                  )}
+                </div>
               </>
             )}
             {editing && (
               <CreditDrawer
-                limit={limit}
+                limit={limit == null ? "" : String(limit)}
                 onClose={() => setEditing(false)}
                 onSave={(value) => {
                   localStorage.setItem("capital-demo-credit-limit", value);
-                  setLimit(value);
+                  localStorage.setItem(
+                    "capital-demo-credit-effective-from",
+                    new Date().toISOString(),
+                  );
+                  void credit.reload();
                 }}
               />
             )}

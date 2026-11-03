@@ -1765,3 +1765,72 @@ summary:focus-visible {
     margin-bottom: 0;
   }
 }
+
+/* Independent resources retain their desktop card spans and loading geometry. */
+.resource-history,
+.resource-monthly,
+.resource-spending {
+  min-width: 0;
+  position: relative;
+}
+.resource-history {
+  grid-column: 1 / -1;
+  min-height: 550px;
+}
+.resource-monthly {
+  min-height: 504px;
+}
+.resource-spending {
+  min-height: 504px;
+}
+.resource-history > .helper,
+.resource-monthly > .helper,
+.resource-spending > .helper,
+.resource-history > .widget-skeleton,
+.resource-monthly > .widget-skeleton,
+.resource-spending > .widget-skeleton {
+  position: absolute;
+  z-index: 2;
+  bottom: 8px;
+  left: 24px;
+  right: 24px;
+}
+.widget-skeleton {
+  color: #a5b4ae;
+  background: #25312d;
+  border-radius: 8px;
+  padding: 8px;
+}
+.metric > .widget-skeleton {
+  min-height: 24px;
+}
+@media (min-width: 1200px) {
+  .main-shell main > .resource-monthly {
+    grid-column: span 2;
+  }
+  .main-shell main > .resource-spending {
+    grid-column: span 1;
+  }
+}
+
+.metric {
+  position: relative;
+}
+.metric > .widget-skeleton {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-size: 11px;
+}
+.resource-history > .panel,
+.resource-monthly > .panel,
+.resource-spending > .panel {
+  height: 100%;
+  box-sizing: border-box;
+  padding-bottom: 56px;
+}
+.resource-history,
+.resource-monthly,
+.resource-spending {
+  margin-bottom: 22px;
+}
