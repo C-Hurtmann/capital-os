@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 test.use({ baseURL: "http://127.0.0.1:5178" });
-test("API zero replaces demo storage, editor is disabled and other widgets remain independent", async ({
+test("API zero replaces demo storage, editor is available and other widgets remain independent", async ({
   page,
 }) => {
   await page.addInitScript(() =>
@@ -14,7 +14,7 @@ test("API zero replaces demo storage, editor is disabled and other widgets remai
   });
   await page.goto("/");
   await expect(page.locator(".limit-row")).toContainText("0.00");
-  await expect(page.getByRole("button", { name: "Edit limit" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Edit limit" })).toBeEnabled();
   await expect(page.getByLabel("Explore category")).toBeVisible();
   expect(
     await page.evaluate(() =>
@@ -50,7 +50,7 @@ test("gateway error keeps other widgets usable and retry accepts unset", async (
   await expect(page.locator(".limit-row")).toContainText("Not set");
 });
 
-test("positive limit loads only on the dashboard and remains read-only", async ({
+test("positive limit loads only on the dashboard without unnecessary requests", async ({
   page,
 }) => {
   let requests = 0;

@@ -16,9 +16,9 @@ import {
   loadHistory,
   loadMonthly,
   loadSpending,
-  loadCredit,
   liveCredit,
 } from "./mockResources";
+import { useCreditLimit } from "./useCreditLimit";
 import { useWidget } from "./useWidget";
 import WidgetStatus from "./WidgetStatus";
 import { money, shortDate } from "./format";
@@ -47,7 +47,7 @@ export default function App() {
     [preset],
   );
   const history = useWidget(historyLoader);
-  const credit = useWidget(loadCredit, page === "dashboard");
+  const credit = useCreditLimit(page === "dashboard");
   const reloadSpending = spending.reload;
   useEffect(() => {
     const change = () => {
@@ -231,9 +231,7 @@ export default function App() {
                       retry={credit.reload}
                     />
                     {liveCredit && (
-                      <p className="helper">
-                        Credit limit from local backend · read only.
-                      </p>
+                      <p className="helper">Credit limit from local backend.</p>
                     )}
                     <div className="limit-row">
                       <span>
@@ -248,7 +246,7 @@ export default function App() {
                       </span>
                       <button
                         id="edit-credit-limit"
-                        disabled={liveCredit || !credit.data}
+                        disabled={!credit.data}
                         onClick={() => setEditing(!editing)}
                         aria-expanded={editing}
                       >
@@ -384,18 +382,13 @@ export default function App() {
                 </div>
               </>
             )}
-            {editing && (
+            {editing && credit.data && (
               <CreditDrawer
-                limit={limit == null ? "" : String(limit)}
+                current={credit.data}
+                demo={!liveCredit}
                 onClose={() => setEditing(false)}
-                onSave={(value) => {
-                  localStorage.setItem("capital-demo-credit-limit", value);
-                  localStorage.setItem(
-                    "capital-demo-credit-effective-from",
-                    new Date().toISOString(),
-                  );
-                  void credit.reload();
-                }}
+                onSave={credit.save}
+                onCheck={credit.reload}
               />
             )}
             <footer>

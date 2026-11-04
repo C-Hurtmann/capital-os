@@ -1834,3 +1834,50 @@ summary:focus-visible {
 .resource-spending {
   margin-bottom: 22px;
 }
+
+.credit-fields {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+}
+.credit-date-mode {
+  border: 1px solid #47554f;
+  border-radius: 8px;
+  margin: 20px 0;
+  padding: 12px;
+  min-width: 0;
+}
+.credit-drawer .credit-date-mode label {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+}
+.credit-date-mode input {
+  width: auto;
+  margin: 0;
+}
+.credit-confirmed {
+  padding: 12px 0;
+  border-bottom: 1px solid #47554f;
+  margin-bottom: 20px;
+  overflow-wrap: anywhere;
+}
+.credit-confirmed p {
+  margin: 8px 0;
+}
+.credit-drawer input[type="datetime-local"] {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  color-scheme: dark;
+}
+.credit-drawer button:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.credit-uncertain {
+  margin-block: 16px;
+}

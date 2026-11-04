@@ -87,3 +87,13 @@ export interface MonthlyView extends PeriodMeta {
     expenseMinor: number | null;
   }[];
 }
+
+/** Approved POST /api/v1/credit-limit. Omission means server time. */
+export interface SetCreditLimitRequest {
+  amountMinor: number;
+  effectiveFrom?: string;
+}
+export type SetCreditLimitResponse = Extract<
+  CreditLimitResponse,
+  { amountMinor: number }
+>;

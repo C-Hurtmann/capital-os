@@ -1,13 +1,14 @@
 # Capital OS frontend — v0.9 review build
 
-English-only, Graphite / Forest, one synthetic Monobank UAH account. This is an interactive frontend proposal for review, not a production bank connection or an approved REST integration.
+English-only, Graphite / Forest, one synthetic Monobank UAH account. This is an interactive frontend proposal for review, not a production bank connection. Credit Limit GET/POST use the approved local API contract.
 
 ## Run
 
-Use Node >=22.13 in Linux/WSL. Do not share node_modules between Windows and Linux.
+Use Node >=22.13 in Linux/WSL; the repository .nvmrc pins the tested Node 22.21.1. Run `nvm install` once if that version is missing, then `nvm use`. The root `make frontend` target loads nvm automatically when installed in ~/.nvm, including when launched from an IDE. Do not share node_modules between Windows and Linux.
 
 ```sh
 cd /home/czagorodnyi/projects/capital-os/frontend
+nvm use
 npm ci
 npm run dev
 ```
@@ -53,12 +54,12 @@ Browser tests exercise responsive overflow, axe checks, independent history rang
 
 docs/api-contract-proposal.md distinguishes approved architecture/credit GET from pending contracts. The demo view model is not an approved REST schema.
 
-## Local credit-limit GET integration
+## Local credit-limit GET/POST integration
 
-Default `npm run dev` remains fully synthetic. Run `npm run dev:api` to read the current credit limit from the local FastAPI at `http://127.0.0.1:8001`. Stop the previous frontend server first to keep port 5173, or pass `-- --port 5174 --strictPort` for a separate local preview.
+Default `npm run dev` remains fully synthetic. Run `npm run dev:api` to read and set the current credit limit from the local FastAPI at `http://127.0.0.1:8001`. Stop the previous frontend server first to keep port 5173, or pass `-- --port 5174 --strictPort` for a separate local preview.
 
 Vite proxies `/api` to port 8001; override with `CAPITAL_API_TARGET` when needed. Browser requests stay relative (`/api/v1/credit-limit`); no backend CORS change is needed. Only the existing credit-limit row uses the backend; all other widgets remain synthetic. No API requests are made for the credit limit while Transactions is active, including its Refresh action. Returning to Dashboard reloads it.
 
-The typed client validates null/zero/positive and UTC timestamps. A failed GET never falls back to demo localStorage. Existing demo editing remains demo-only; API mode is read-only, with no PUT. This is a local development integration; public authentication remains outside this change.
+The typed client validates null/zero/positive and UTC timestamps. A failed GET never falls back to demo localStorage. Existing demo editing remains demo-only. API editing uses POST, never PUT. Now mode omits effectiveFrom; Specify date and time resolves Europe/Kyiv offsets and requires a choice for repeated DST times. Saved dates are displayed separately; each opening starts in Now mode. Decimal strings are converted with BigInt, including the safe-integer boundary. Saves block editing/closing and invalidate older GETs. There are no automatic POST retries. Uncertain outcomes retain the draft and offer a manual Check current value GET. This is a local development integration; public authentication remains outside this change.
 
 The history cache is awaiting https://trello.com/c/3P9yMUG7. Demo preset boundaries and 3M default are fixtures, not settled calendar rules. No Custom Range remains in history; transaction dates remain available.

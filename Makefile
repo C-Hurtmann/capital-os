@@ -14,4 +14,4 @@ backend:
 		--port $(BACKEND_PORT)
 
 frontend:
-	cd frontend && npm run dev
+	bash -c 'if [ -s "$$HOME/.nvm/nvm.sh" ]; then . "$$HOME/.nvm/nvm.sh"; nvm use --silent || exit; fi; cd frontend && npm run dev'

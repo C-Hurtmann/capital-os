@@ -1,12 +1,4 @@
-export const money = (value: number | null) =>
-  value === null
-    ? "Unavailable"
-    : new Intl.NumberFormat("en-GB", {
-        style: "currency",
-        currency: "UAH",
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-      }).format(value / 100);
+export { formatMinor as money } from "./money";
 export const shortDate = (date: string) =>
   new Intl.DateTimeFormat("en-GB", {
     day: "numeric",
