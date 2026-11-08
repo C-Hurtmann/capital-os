@@ -1,35 +1,24 @@
 from datetime import UTC, datetime
-from typing import Annotated, Any
+from typing import Annotated
 
 from botocore.exceptions import ClientError
 from fastapi import APIRouter, Depends, HTTPException, Request
 
-from app.core.dynamodb import get_dynamodb_client
-from app.core.settings import Settings
+from app.helpers import ACCOUNT_ID_PLACEHOLDER
 from app.models.credit_limit import CreditLimit
 from app.repositories.credit_limit import CreditLimitRepository
 from app.schemas.credit_limit import CreditLimitResponse, PostCreditLimitRequest
 
 router = APIRouter(prefix="/api/v1", tags=["Credit Limit"])
 
-ACCOUNT_ID = "monobank-main"
-
-
-def get_credit_limit_repository(
-    settings: Annotated[Settings, Depends(Settings.settings_cached)],
-    client: Annotated[Any, Depends(get_dynamodb_client)],
-) -> CreditLimitRepository:
-    return CreditLimitRepository(
-        client=client,
-        table_name=settings.dynamodb_table_name,
-    )
-
 
 @router.get("/credit-limit")
 def get_credit_limit(
-    repository: Annotated[CreditLimitRepository, Depends(get_credit_limit_repository)],
+    repository: Annotated[
+        CreditLimitRepository, Depends(CreditLimitRepository.get_repository)
+    ],
 ) -> CreditLimitResponse:
-    if not (credit_limit := repository.get_current(ACCOUNT_ID)):
+    if not (credit_limit := repository.get_current(ACCOUNT_ID_PLACEHOLDER)):
         return CreditLimitResponse(amount_minor=None, effective_from=None)
 
     return CreditLimitResponse(
@@ -56,10 +45,12 @@ def require_json_content_type(request: Request) -> None:
 )
 def post_credit_limit(
     request: PostCreditLimitRequest,
-    repository: Annotated[CreditLimitRepository, Depends(get_credit_limit_repository)],
+    repository: Annotated[
+        CreditLimitRepository, Depends(CreditLimitRepository.get_repository)
+    ],
 ) -> CreditLimitResponse:
     credit_limit = CreditLimit(
-        account_id=ACCOUNT_ID,
+        account_id=ACCOUNT_ID_PLACEHOLDER,
         credit_limit_minor=request.amount_minor,
         effective_from=request.effective_from or datetime.now(UTC),
     )

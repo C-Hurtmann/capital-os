@@ -6,7 +6,6 @@ import pytest
 from botocore.exceptions import ClientError
 from fastapi.testclient import TestClient
 
-from app.api.credit_limit import get_credit_limit_repository
 from app.main import app
 from app.models.credit_limit import CreditLimit
 from app.repositories.credit_limit import CreditLimitRepository
@@ -19,7 +18,9 @@ class FakeCreditLimitRepository:
 
 
 def test_get_credit_limit_when_not_set() -> None:
-    app.dependency_overrides[get_credit_limit_repository] = FakeCreditLimitRepository
+    app.dependency_overrides[CreditLimitRepository.get_repository] = (
+        FakeCreditLimitRepository
+    )
 
     try:
         with TestClient(app) as client:
@@ -31,7 +32,7 @@ def test_get_credit_limit_when_not_set() -> None:
             "effectiveFrom": None,
         }
     finally:
-        app.dependency_overrides.pop(get_credit_limit_repository, None)
+        app.dependency_overrides.pop(CreditLimitRepository.get_repository, None)
 
 
 def test_get_credit_limit_when_set() -> None:
@@ -42,7 +43,7 @@ def test_get_credit_limit_when_set() -> None:
         effective_from=datetime(2026, 11, 3, 9, 0, tzinfo=UTC),
     )
 
-    app.dependency_overrides[get_credit_limit_repository] = lambda: repository
+    app.dependency_overrides[CreditLimitRepository.get_repository] = lambda: repository
 
     try:
         with TestClient(app) as client:
@@ -56,7 +57,7 @@ def test_get_credit_limit_when_set() -> None:
 
         repository.get_current.assert_called_once_with("monobank-main")
     finally:
-        app.dependency_overrides.pop(get_credit_limit_repository, None)
+        app.dependency_overrides.pop(CreditLimitRepository.get_repository, None)
 
 
 def test_get_credit_limit_when_zero() -> None:
@@ -67,7 +68,7 @@ def test_get_credit_limit_when_zero() -> None:
         effective_from=datetime(2026, 11, 3, 9, 0, tzinfo=UTC),
     )
 
-    app.dependency_overrides[get_credit_limit_repository] = lambda: repository
+    app.dependency_overrides[CreditLimitRepository.get_repository] = lambda: repository
 
     try:
         with TestClient(app) as client:
@@ -79,7 +80,7 @@ def test_get_credit_limit_when_zero() -> None:
             "effectiveFrom": "2026-11-03T09:00:00Z",
         }
     finally:
-        app.dependency_overrides.pop(get_credit_limit_repository, None)
+        app.dependency_overrides.pop(CreditLimitRepository.get_repository, None)
 
 
 def test_post_credit_limit_with_explicit_date() -> None:
@@ -92,7 +93,7 @@ def test_post_credit_limit_with_explicit_date() -> None:
     repository = Mock(spec=CreditLimitRepository)
     repository.set_current.return_value = credit_limit
 
-    app.dependency_overrides[get_credit_limit_repository] = lambda: repository
+    app.dependency_overrides[CreditLimitRepository.get_repository] = lambda: repository
 
     try:
         with TestClient(app) as client:
@@ -111,14 +112,14 @@ def test_post_credit_limit_with_explicit_date() -> None:
         }
         repository.set_current.assert_called_once_with(credit_limit)
     finally:
-        app.dependency_overrides.pop(get_credit_limit_repository, None)
+        app.dependency_overrides.pop(CreditLimitRepository.get_repository, None)
 
 
 def test_post_credit_limit_uses_server_time_when_date_omitted() -> None:
     repository = Mock(spec=CreditLimitRepository)
     repository.set_current.side_effect = lambda credit_limit: credit_limit
 
-    app.dependency_overrides[get_credit_limit_repository] = lambda: repository
+    app.dependency_overrides[CreditLimitRepository.get_repository] = lambda: repository
 
     try:
         with TestClient(app) as client:
@@ -146,7 +147,7 @@ def test_post_credit_limit_uses_server_time_when_date_omitted() -> None:
         assert datetime.fromisoformat(body["effectiveFrom"]) == saved.effective_from
 
     finally:
-        app.dependency_overrides.pop(get_credit_limit_repository, None)
+        app.dependency_overrides.pop(CreditLimitRepository.get_repository, None)
 
 
 def test_repeated_post_without_date_updates_effective_from() -> None:
@@ -156,7 +157,7 @@ def test_repeated_post_without_date_updates_effective_from() -> None:
     first_time = datetime(2026, 11, 3, 10, 0, tzinfo=UTC)
     second_time = datetime(2026, 11, 3, 10, 1, tzinfo=UTC)
 
-    app.dependency_overrides[get_credit_limit_repository] = lambda: repository
+    app.dependency_overrides[CreditLimitRepository.get_repository] = lambda: repository
 
     try:
         with patch("app.api.credit_limit.datetime") as mocked_datetime:
@@ -193,7 +194,7 @@ def test_repeated_post_without_date_updates_effective_from() -> None:
         )
 
     finally:
-        app.dependency_overrides.pop(get_credit_limit_repository, None)
+        app.dependency_overrides.pop(CreditLimitRepository.get_repository, None)
 
 
 @pytest.mark.parametrize(
@@ -215,7 +216,7 @@ def test_post_credit_limit_rejects_invalid_payload(
     payload: dict[str, object],
 ) -> None:
     repository = Mock(spec=CreditLimitRepository)
-    app.dependency_overrides[get_credit_limit_repository] = lambda: repository
+    app.dependency_overrides[CreditLimitRepository.get_repository] = lambda: repository
 
     try:
         with TestClient(app) as client:
@@ -227,12 +228,12 @@ def test_post_credit_limit_rejects_invalid_payload(
         assert response.status_code == 422
         repository.set_current.assert_not_called()
     finally:
-        app.dependency_overrides.pop(get_credit_limit_repository, None)
+        app.dependency_overrides.pop(CreditLimitRepository.get_repository, None)
 
 
 def test_post_credit_limit_validation_error_returns_problem_details() -> None:
     repository = Mock(spec=CreditLimitRepository)
-    app.dependency_overrides[get_credit_limit_repository] = lambda: repository
+    app.dependency_overrides[CreditLimitRepository.get_repository] = lambda: repository
 
     try:
         with TestClient(app) as client:
@@ -262,12 +263,12 @@ def test_post_credit_limit_validation_error_returns_problem_details() -> None:
 
         repository.set_current.assert_not_called()
     finally:
-        app.dependency_overrides.pop(get_credit_limit_repository, None)
+        app.dependency_overrides.pop(CreditLimitRepository.get_repository, None)
 
 
 def test_post_credit_limit_malformed_json_returns_problem_details() -> None:
     repository = Mock(spec=CreditLimitRepository)
-    app.dependency_overrides[get_credit_limit_repository] = lambda: repository
+    app.dependency_overrides[CreditLimitRepository.get_repository] = lambda: repository
 
     try:
         with TestClient(app) as client:
@@ -290,12 +291,12 @@ def test_post_credit_limit_malformed_json_returns_problem_details() -> None:
 
         repository.set_current.assert_not_called()
     finally:
-        app.dependency_overrides.pop(get_credit_limit_repository, None)
+        app.dependency_overrides.pop(CreditLimitRepository.get_repository, None)
 
 
 def test_post_credit_limit_rejects_unsupported_content_type() -> None:
     repository = Mock(spec=CreditLimitRepository)
-    app.dependency_overrides[get_credit_limit_repository] = lambda: repository
+    app.dependency_overrides[CreditLimitRepository.get_repository] = lambda: repository
 
     try:
         with TestClient(app) as client:
@@ -318,7 +319,7 @@ def test_post_credit_limit_rejects_unsupported_content_type() -> None:
 
         repository.set_current.assert_not_called()
     finally:
-        app.dependency_overrides.pop(get_credit_limit_repository, None)
+        app.dependency_overrides.pop(CreditLimitRepository.get_repository, None)
 
 
 def test_post_credit_limit_dynamodb_unavailable_returns_503() -> None:
@@ -333,7 +334,7 @@ def test_post_credit_limit_dynamodb_unavailable_returns_503() -> None:
         "UpdateItem",
     )
 
-    app.dependency_overrides[get_credit_limit_repository] = lambda: repository
+    app.dependency_overrides[CreditLimitRepository.get_repository] = lambda: repository
 
     try:
         with TestClient(app, raise_server_exceptions=False) as client:
@@ -355,7 +356,7 @@ def test_post_credit_limit_dynamodb_unavailable_returns_503() -> None:
 
         repository.set_current.assert_called_once()
     finally:
-        app.dependency_overrides.pop(get_credit_limit_repository, None)
+        app.dependency_overrides.pop(CreditLimitRepository.get_repository, None)
 
 
 def test_post_credit_limit_unexpected_error_returns_500() -> None:
@@ -364,7 +365,7 @@ def test_post_credit_limit_unexpected_error_returns_500() -> None:
         "Internal database connection details"
     )
 
-    app.dependency_overrides[get_credit_limit_repository] = lambda: repository
+    app.dependency_overrides[CreditLimitRepository.get_repository] = lambda: repository
 
     try:
         with TestClient(app, raise_server_exceptions=False) as client:
@@ -387,4 +388,4 @@ def test_post_credit_limit_unexpected_error_returns_500() -> None:
         assert "Internal database connection details" not in response.text
         repository.set_current.assert_called_once()
     finally:
-        app.dependency_overrides.pop(get_credit_limit_repository, None)
+        app.dependency_overrides.pop(CreditLimitRepository.get_repository, None)

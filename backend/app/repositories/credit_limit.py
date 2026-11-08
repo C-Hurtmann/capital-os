@@ -1,21 +1,14 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
 
 from botocore.exceptions import ClientError
 
 from app.models.credit_limit import CreditLimit
-
-if TYPE_CHECKING:
-    from mypy_boto3_dynamodb.client import DynamoDBClient
+from app.repositories.base import BaseRepository
 
 
-class CreditLimitRepository:
-    def __init__(self, client: DynamoDBClient, table_name: str) -> None:
-        self.client = client
-        self.table_name = table_name
-
+class CreditLimitRepository(BaseRepository):
     def get_current(self, account_id: str) -> CreditLimit | None:
         response = self.client.get_item(
             TableName=self.table_name,

@@ -3,18 +3,15 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from app.helpers import ACCOUNT_ID_PLACEHOLDER
 from app.models.transaction import Transaction
+from app.repositories.base import BaseRepository
 
 if TYPE_CHECKING:
-    from mypy_boto3_dynamodb.client import DynamoDBClient
     from mypy_boto3_dynamodb.type_defs import AttributeValueTypeDef, QueryInputTypeDef
 
 
-class TransactionRepository:
-    def __init__(self, client: DynamoDBClient, table_name: str) -> None:
-        self.client = client
-        self.table_name = table_name
-
+class TransactionRepository(BaseRepository):
     @staticmethod
     def _to_transaction(item: dict[str, AttributeValueTypeDef]) -> Transaction:
         return Transaction(
@@ -43,7 +40,7 @@ class TransactionRepository:
             "TableName": self.table_name,
             "KeyConditionExpression": "PK = :pk AND SK BETWEEN :start AND :end",
             "ExpressionAttributeValues": {
-                ":pk": {"S": "ACCOUNT#monobank-main"},
+                ":pk": {"S": f"ACCOUNT#{ACCOUNT_ID_PLACEHOLDER}"},
                 ":start": {"S": f"TX#{from_ms:013d}"},
                 ":end": {"S": f"TX#{to_ms:013d}"},
             },
