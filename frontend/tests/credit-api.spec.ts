@@ -65,12 +65,25 @@ test("positive limit loads only on the dashboard without unnecessary requests", 
   await expect(page.locator(".limit-row")).toContainText("15,000.00");
   await page.getByRole("button", { name: "Transactions", exact: true }).click();
   const before = requests;
-  await page.getByRole("button", { name: "Refresh demo", exact: true }).click();
+  await page.getByRole("button", { name: "Reload data", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "Refresh demo", exact: true }),
+    page.getByRole("button", { name: "Reload data", exact: true }),
   ).toBeEnabled();
   expect(requests).toBe(before);
   await page.getByRole("button", { name: "Dashboard", exact: true }).click();
   await expect.poll(() => requests).toBeGreaterThan(before);
   await expect(page.locator(".limit-row")).toContainText("15,000.00");
+});
+
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/v1/balance", (route) =>
+    route.fulfill({
+      json: {
+        bankBalanceMinor: 7000000,
+        ownFundsMinor: 2000000,
+        creditUsedMinor: 0,
+        fetchedAt: "2026-11-04T06:00:00Z",
+      },
+    }),
+  );
 });

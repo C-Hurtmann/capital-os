@@ -1,7 +1,7 @@
 /** Synthetic service boundary. Calendar choices below are fixtures, not production rules. */
 import { aggregate, DEMO_TODAY } from "./data";
 import type {
-  BalanceView,
+  BalanceResponse,
   CashflowView,
   HistoryPreset,
   HistoryView,
@@ -10,6 +10,8 @@ import type {
   CreditLimitResponse,
 } from "./contracts";
 import { parseCreditLimit, getCreditLimit } from "./creditLimit";
+import { getBalance } from "./balance";
+export const liveBalance = import.meta.env.VITE_BALANCE_SOURCE === "api";
 const currentQuery = { from: "2026-10-01", to: DEMO_TODAY, currency: "UAH" };
 const ranges: Record<HistoryPreset, string> = {
   "1M": "2026-10-01",
@@ -34,11 +36,15 @@ async function mock<T>(signal: AbortSignal, read: () => T): Promise<T> {
     throw new Error("Could not refresh. Previous data is retained.");
   return read();
 }
-export const loadBalance = (signal: AbortSignal): Promise<BalanceView> =>
-  mock(signal, () => ({
-    amountMinor: aggregate(currentQuery).overview.currentBalanceMinor,
-    asOf: meta(currentQuery.from).asOf,
-  }));
+export const loadBalance = (signal: AbortSignal): Promise<BalanceResponse> =>
+  liveBalance
+    ? getBalance(signal)
+    : mock(signal, () => ({
+        bankBalanceMinor: aggregate(currentQuery).overview.currentBalanceMinor,
+        ownFundsMinor: null,
+        creditUsedMinor: null,
+        fetchedAt: meta(currentQuery.from).asOf,
+      }));
 export const loadCashflow = (signal: AbortSignal): Promise<CashflowView> =>
   mock(signal, () => {
     const o = aggregate(currentQuery).overview;

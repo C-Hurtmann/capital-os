@@ -162,7 +162,7 @@ test("save locks editing/closing, ignores older GET and blocks new GET while pen
     page.getByRole("button", { name: "Edit limit", exact: true }),
   ).toBeEnabled();
   holdReads = true;
-  await page.getByRole("button", { name: "Refresh demo", exact: true }).click();
+  await page.getByRole("button", { name: "Reload data", exact: true }).click();
   await expect.poll(() => !!oldGet).toBe(true);
   const getsBeforeSave = gets;
   await page.getByRole("button", { name: "Edit limit", exact: true }).click();
@@ -307,3 +307,16 @@ for (const width of [375, 1440])
       fullPage: true,
     });
   });
+
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/v1/balance", (route) =>
+    route.fulfill({
+      json: {
+        bankBalanceMinor: 7000000,
+        ownFundsMinor: 2000000,
+        creditUsedMinor: 0,
+        fetchedAt: "2026-11-04T06:00:00Z",
+      },
+    }),
+  );
+});

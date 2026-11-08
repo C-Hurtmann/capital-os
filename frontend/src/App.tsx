@@ -17,11 +17,12 @@ import {
   loadMonthly,
   loadSpending,
   liveCredit,
+  liveBalance,
 } from "./mockResources";
 import { useCreditLimit } from "./useCreditLimit";
 import { useWidget } from "./useWidget";
 import WidgetStatus from "./WidgetStatus";
-import { money, shortDate } from "./format";
+import { money, shortDate, bankTimestamp } from "./format";
 import Transactions from "./Transactions";
 const HistoryChart = lazy(() =>
   import("./Charts").then((m) => ({ default: m.HistoryChart })),
@@ -38,7 +39,7 @@ export default function App() {
     [sync, setSync] = useState("idle"),
     [lastSync, setLastSync] = useState(""),
     [editing, setEditing] = useState(false);
-  const balance = useWidget(loadBalance);
+  const balance = useWidget(loadBalance, page === "dashboard");
   const cashflow = useWidget(loadCashflow);
   const spending = useWidget(loadSpending);
   const monthly = useWidget(loadMonthly);
@@ -160,7 +161,9 @@ export default function App() {
             </span>
             <span className="private">
               <span className="status-dot" />
-              Demo · 29 Oct 2026
+              {liveBalance
+                ? "Local API · Demo analytics"
+                : "Demo · 29 Oct 2026"}
             </span>
           </header>
           <main id="main">
@@ -183,18 +186,24 @@ export default function App() {
                 disabled={sync === "loading"}
               >
                 <RefreshCw size={16} />
-                {sync === "loading" ? "Refreshing…" : "Refresh demo"}
+                {sync === "loading"
+                  ? "Refreshing…"
+                  : liveBalance
+                    ? "Reload data"
+                    : "Refresh demo"}
               </button>
             </div>
             <div className="sync-status" role="status">
               <span className="status-dot" />
-              {sync === "error"
-                ? "Refresh failed. Your previously loaded data is still available."
-                : sync === "loading"
-                  ? "Refreshing synthetic data…"
-                  : lastSync
-                    ? `Demo refreshed at ${lastSync}. No bank connection.`
-                    : "Synthetic snapshot · 29 Oct 2026, 18:30 UTC · Not connected to Monobank"}
+              {liveBalance
+                ? "Bank balance from saved snapshot · Other analytics use demo data · Reload does not sync with Monobank"
+                : sync === "error"
+                  ? "Refresh failed. Your previously loaded data is still available."
+                  : sync === "loading"
+                    ? "Refreshing synthetic data…"
+                    : lastSync
+                      ? `Demo refreshed at ${lastSync}. No bank connection.`
+                      : "Synthetic snapshot · 29 Oct 2026, 18:30 UTC · Not connected to Monobank"}
             </div>
             {page === "transactions" ? (
               <Transactions />
@@ -212,17 +221,33 @@ export default function App() {
                       hasData={!!balance.data}
                       retry={balance.reload}
                     />
-                    <strong>{money(balance.data?.amountMinor ?? null)}</strong>
+                    <strong>
+                      {money(balance.data?.bankBalanceMinor ?? null)}
+                    </strong>
                     <span>
-                      Monobank · UAH · As of{" "}
-                      {balance.data ? shortDate(balance.data.asOf) : "unknown"}
+                      Monobank · UAH ·{" "}
+                      {liveBalance ? "Bank data fetched" : "As of"}{" "}
+                      {balance.data ? (
+                        <time dateTime={balance.data.fetchedAt}>
+                          {bankTimestamp(balance.data.fetchedAt)}
+                        </time>
+                      ) : (
+                        "unknown"
+                      )}
                     </span>
                     <div className="balance-detail">
                       <span>Own funds / credit used</span>
-                      <span>Not yet determined</span>
+                      <span>
+                        {balance.data?.ownFundsMinor == null &&
+                        balance.data?.creditUsedMinor == null
+                          ? "Estimate unavailable"
+                          : `${money(balance.data?.ownFundsMinor ?? null)} / ${money(balance.data?.creditUsedMinor ?? null)}`}
+                      </span>
                     </div>
                     <p className="helper">
-                      Bank balance breakdown awaits confirmed bank semantics.
+                      {liveBalance
+                        ? "Saved bank snapshot. Reloading does not sync with Monobank."
+                        : "Synthetic balance; own funds and credit usage are not estimated."}
                     </p>
                     <WidgetStatus
                       name="credit limit"
@@ -387,7 +412,10 @@ export default function App() {
                 current={credit.data}
                 demo={!liveCredit}
                 onClose={() => setEditing(false)}
-                onSave={credit.save}
+                onSave={async (request) => {
+                  await credit.save(request);
+                  if (liveBalance) void balance.reload();
+                }}
                 onCheck={credit.reload}
               />
             )}

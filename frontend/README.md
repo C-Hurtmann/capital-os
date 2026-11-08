@@ -63,3 +63,11 @@ Vite proxies `/api` to port 8001; override with `CAPITAL_API_TARGET` when needed
 The typed client validates null/zero/positive and UTC timestamps. A failed GET never falls back to demo localStorage. Existing demo editing remains demo-only. API editing uses POST, never PUT. Now mode omits effectiveFrom; Specify date and time resolves Europe/Kyiv offsets and requires a choice for repeated DST times. Saved dates are displayed separately; each opening starts in Now mode. Decimal strings are converted with BigInt, including the safe-integer boundary. Saves block editing/closing and invalidate older GETs. There are no automatic POST retries. Uncertain outcomes retain the draft and offer a manual Check current value GET. This is a local development integration; public authentication remains outside this change.
 
 The history cache is awaiting https://trello.com/c/3P9yMUG7. Demo preset boundaries and 3M default are fixtures, not settled calendar rules. No Custom Range remains in history; transaction dates remain available.
+
+## Local balance integration
+
+`npm run dev:api` now enables both GET balance and credit-limit GET/POST through the existing proxy. `GET /api/v1/balance` is the sole source for the current bank balance, own funds and credit used in this mode. Other analytics remain synthetic; `npm run dev` remains demo-only. No bank synchronization is initiated by Reload data or Retry balance.
+
+The client validates safe integer amounts and UTC fetchedAt at runtime. The card formats amounts exactly in UAH and displays fetchedAt including date, time and UTC, never the page load time. Missing estimates show Estimate unavailable; initial errors show Unavailable, not zero. Refresh errors retain the last successfully loaded snapshot and its original timestamp. No age threshold is invented: the bank retrieval time is always visible. State is held by the existing useWidget hook, with cancellation and independent retry. Successful credit-limit edits reread the balance to obtain backend-calculated estimates without any frontend financial calculations.
+
+Verification: unit and browser coverage includes own funds, credit usage, null estimates, negative balance, 503, fetchedAt across browser timezones, loading and retry with retained data. Real backend smoke must be repeated when local FastAPI on port 8001 is running.

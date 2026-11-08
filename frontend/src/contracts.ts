@@ -64,9 +64,12 @@ export interface PeriodMeta {
   coverage: "complete" | "partial" | "unavailable";
   timeZone: "Europe/Kyiv";
 }
-export interface BalanceView {
-  amountMinor: number | null;
-  asOf: string;
+/** Approved GET /api/v1/balance: saved bank snapshot, not a sync command. */
+export interface BalanceResponse {
+  bankBalanceMinor: number;
+  ownFundsMinor: number | null;
+  creditUsedMinor: number | null;
+  fetchedAt: string;
 }
 export interface CashflowView extends PeriodMeta {
   incomeMinor: number | null;
