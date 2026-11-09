@@ -26,7 +26,7 @@ def get_balance(
     ],
 ) -> BalanceResponse | None:
     try:
-        snapshot = balance_repository.get_latest(ACCOUNT_ID_PLACEHOLDER)
+        snapshot = balance_repository.get_snapshot(ACCOUNT_ID_PLACEHOLDER)
         if snapshot is None:
             raise HTTPException(
                 status_code=503,

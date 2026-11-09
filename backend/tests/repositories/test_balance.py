@@ -19,7 +19,7 @@ def test_get_latest_returns_snapshot() -> None:
 
     repository = BalanceRepository(client, "capital-os-local")
 
-    snapshot = repository.get_latest("monobank-main")
+    snapshot = repository.get_snapshot("monobank-main")
 
     assert snapshot is not None
     assert snapshot.account_id == "monobank-main"
@@ -42,7 +42,7 @@ def test_get_latest_returns_none_when_missing() -> None:
 
     repository = BalanceRepository(client, "capital-os-local")
 
-    assert repository.get_latest("monobank-main") is None
+    assert repository.get_snapshot("monobank-main") is None
 
 
 def test_get_latest_raises_on_corrupted_snapshot() -> None:
@@ -57,4 +57,4 @@ def test_get_latest_raises_on_corrupted_snapshot() -> None:
     repository = BalanceRepository(client, "capital-os-local")
 
     with pytest.raises(ValueError):
-        repository.get_latest("monobank-main")
+        repository.get_snapshot("monobank-main")

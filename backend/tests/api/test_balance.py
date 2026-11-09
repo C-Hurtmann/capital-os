@@ -16,7 +16,7 @@ def test_get_balance_returns_own_and_credit_funds() -> None:
     fetched_at = datetime(2026, 11, 4, 6, tzinfo=UTC)
 
     balance_repository = Mock()
-    balance_repository.get_latest.return_value = SimpleNamespace(
+    balance_repository.get_snapshot.return_value = SimpleNamespace(
         bank_balance_minor=7_000_000,
         fetched_at=fetched_at,
     )
@@ -45,7 +45,7 @@ def test_get_balance_returns_own_and_credit_funds() -> None:
             "fetchedAt": "2026-11-04T06:00:00Z",
         }
 
-        balance_repository.get_latest.assert_called_once_with("monobank-main")
+        balance_repository.get_snapshot.assert_called_once_with("monobank-main")
         credit_repository.get_current.assert_called_once_with("monobank-main")
     finally:
         app.dependency_overrides.pop(BalanceRepository.get_repository, None)
@@ -97,7 +97,7 @@ def test_get_balance_breakdown(
     expected_credit: int | None,
 ) -> None:
     balance_repository = Mock()
-    balance_repository.get_latest.return_value = SimpleNamespace(
+    balance_repository.get_snapshot.return_value = SimpleNamespace(
         bank_balance_minor=bank_balance,
         fetched_at=datetime(2026, 11, 4, 6, tzinfo=UTC),
     )
@@ -134,7 +134,7 @@ def test_get_balance_breakdown(
 
 def test_get_balance_without_snapshot_returns_503() -> None:
     balance_repository = Mock(spec=BalanceRepository)
-    balance_repository.get_latest.return_value = None
+    balance_repository.get_snapshot.return_value = None
 
     credit_repository = Mock(spec=CreditLimitRepository)
 
@@ -167,7 +167,7 @@ def test_get_balance_without_snapshot_returns_503() -> None:
         assert body["detail"] == ("Bank balance snapshot is unavailable")
         UUID(body["requestId"])
 
-        balance_repository.get_latest.assert_called_once_with("monobank-main")
+        balance_repository.get_snapshot.assert_called_once_with("monobank-main")
         credit_repository.get_current.assert_not_called()
     finally:
         app.dependency_overrides.pop(BalanceRepository.get_repository, None)
@@ -182,7 +182,7 @@ def test_get_balance_dynamodb_unavailable_returns_503(
     failed_repository: str,
 ) -> None:
     balance_repository = Mock(spec=BalanceRepository)
-    balance_repository.get_latest.return_value = SimpleNamespace(
+    balance_repository.get_snapshot.return_value = SimpleNamespace(
         bank_balance_minor=7_000_000,
         fetched_at=datetime(2026, 11, 4, 6, tzinfo=UTC),
     )
@@ -203,7 +203,7 @@ def test_get_balance_dynamodb_unavailable_returns_503(
     )
 
     if failed_repository == "balance":
-        balance_repository.get_latest.side_effect = error
+        balance_repository.get_snapshot.side_effect = error
     else:
         credit_repository.get_current.side_effect = error
 
@@ -239,7 +239,7 @@ def test_get_balance_unexpected_error_returns_500(
     failed_repository: str,
 ) -> None:
     balance_repository = Mock(spec=BalanceRepository)
-    balance_repository.get_latest.return_value = SimpleNamespace(
+    balance_repository.get_snapshot.return_value = SimpleNamespace(
         bank_balance_minor=7_000_000,
         fetched_at=datetime(2026, 11, 4, 6, tzinfo=UTC),
     )
@@ -252,7 +252,7 @@ def test_get_balance_unexpected_error_returns_500(
     error_message = "Internal database connection details"
 
     if failed_repository == "balance":
-        balance_repository.get_latest.side_effect = RuntimeError(error_message)
+        balance_repository.get_snapshot.side_effect = RuntimeError(error_message)
     else:
         credit_repository.get_current.side_effect = RuntimeError(error_message)
 

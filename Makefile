@@ -1,4 +1,4 @@
-.PHONY: dev backend frontend
+.PHONY: dev backend frontend frontend-demo
 
 export PATH := $(HOME)/.local/bin:$(PATH)
 
@@ -14,4 +14,7 @@ backend:
 		--port $(BACKEND_PORT)
 
 frontend:
+	bash -c 'if [ -s "$$HOME/.nvm/nvm.sh" ]; then . "$$HOME/.nvm/nvm.sh"; nvm use --silent || exit; fi; cd frontend && npm run dev:api'
+
+frontend-demo:
 	bash -c 'if [ -s "$$HOME/.nvm/nvm.sh" ]; then . "$$HOME/.nvm/nvm.sh"; nvm use --silent || exit; fi; cd frontend && npm run dev'
