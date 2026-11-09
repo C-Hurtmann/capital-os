@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
+from botocore.exceptions import ClientError
+
 from app.helpers import ACCOUNT_ID_PLACEHOLDER
 from app.models.transaction import Transaction
 from app.repositories.base import BaseRepository
@@ -53,3 +55,47 @@ class TransactionRepository(BaseRepository):
         response = self.client.query(**params)
         transactions = [self._to_transaction(item) for item in response["Items"]]
         return transactions, response.get("LastEvaluatedKey")
+
+    def insert_if_not_exists(self, transaction: Transaction) -> bool:
+        occurred_at_ms = int(transaction.occurred_at.timestamp() * 1000)
+
+        try:
+            self.client.put_item(
+                TableName=self.table_name,
+                Item={
+                    "PK": {
+                        "S": f"ACCOUNT#{ACCOUNT_ID_PLACEHOLDER}",
+                    },
+                    "SK": {
+                        "S": f"TX#{occurred_at_ms:013d}#{transaction.bank_id}",
+                    },
+                    "bankId": {"S": transaction.bank_id},
+                    "occurredAtMs": {"N": str(occurred_at_ms)},
+                    "amountMinor": {
+                        "N": str(transaction.amount_minor),
+                    },
+                    "operationAmountMinor": {
+                        "N": str(transaction.operation_amount_minor),
+                    },
+                    "operationCurrencyCode": {
+                        "N": str(transaction.operation_currency_code),
+                    },
+                    "balanceMinor": {
+                        "N": str(transaction.balance_minor),
+                    },
+                    "mcc": {"N": str(transaction.mcc)},
+                    "commissionMinor": {
+                        "N": str(transaction.commission_minor),
+                    },
+                },
+                ConditionExpression="attribute_not_exists(PK)",
+            )
+        except ClientError as exc:
+            if (
+                exc.response.get("Error", {}).get("Code")
+                == "ConditionalCheckFailedException"
+            ):
+                return False
+            raise
+
+        return True

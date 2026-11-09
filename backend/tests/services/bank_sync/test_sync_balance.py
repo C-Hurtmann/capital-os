@@ -8,6 +8,7 @@ from app.core.settings import Settings
 from app.integrations.monobank.client import MonobankClient
 from app.integrations.monobank.models import MonobankClientInfoResponse
 from app.repositories.balance import BalanceRepository
+from app.repositories.transactions import TransactionRepository
 from app.services.bank_sync import BankSyncService
 
 
@@ -49,11 +50,13 @@ def build_service(
     )
 
     balance_repository = Mock(spec=BalanceRepository)
+    transaction_repository = Mock(spec=TransactionRepository)
 
     service = BankSyncService(
         settings=settings,
         monobank_client=monobank_client,
         balance_repository=balance_repository,
+        transaction_repository=transaction_repository,
     )
 
     return service, monobank_client, balance_repository

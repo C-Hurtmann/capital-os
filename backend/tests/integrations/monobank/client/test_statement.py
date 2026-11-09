@@ -20,6 +20,7 @@ def test_get_statement_success() -> None:
             "currencyCode": 980,
             "mcc": 5411,
             "balance": 1_000_000,
+            "commissionRate": 0,
         }
     ]
 

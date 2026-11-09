@@ -50,18 +50,15 @@ class MonobankStatementItem(MonobankResponseModel):
     operation_amount: int = Field(alias="operationAmount")
     currency_code: int = Field(alias="currencyCode")
 
-    mcc: int | None = None
+    mcc: int
     original_mcc: int | None = Field(
         default=None,
         alias="originalMcc",
     )
     hold: bool | None = None
-    balance: int | None = None
+    balance: int
 
-    commission_rate: int | None = Field(
-        default=None,
-        alias="commissionRate",
-    )
+    commission_rate: int = Field(alias="commissionRate")
     cashback_amount: int | None = Field(
         default=None,
         alias="cashbackAmount",
