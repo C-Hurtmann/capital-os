@@ -39,3 +39,51 @@ class MonobankClientInfoResponse(MonobankResponseModel):
             if account.id == account_id:
                 return account
         return None
+
+
+class MonobankStatementItem(MonobankResponseModel):
+    id: str = Field(min_length=1)
+    time: int = Field(ge=0)
+    description: str
+
+    amount: int
+    operation_amount: int = Field(alias="operationAmount")
+    currency_code: int = Field(alias="currencyCode")
+
+    mcc: int | None = None
+    original_mcc: int | None = Field(
+        default=None,
+        alias="originalMcc",
+    )
+    hold: bool | None = None
+    balance: int | None = None
+
+    commission_rate: int | None = Field(
+        default=None,
+        alias="commissionRate",
+    )
+    cashback_amount: int | None = Field(
+        default=None,
+        alias="cashbackAmount",
+    )
+    comment: str | None = None
+    receipt_id: str | None = Field(
+        default=None,
+        alias="receiptId",
+    )
+    invoice_id: str | None = Field(
+        default=None,
+        alias="invoiceId",
+    )
+    counter_edrpou: str | None = Field(
+        default=None,
+        alias="counterEdrpou",
+    )
+    counter_iban: str | None = Field(
+        default=None,
+        alias="counterIban",
+    )
+    counter_name: str | None = Field(
+        default=None,
+        alias="counterName",
+    )
