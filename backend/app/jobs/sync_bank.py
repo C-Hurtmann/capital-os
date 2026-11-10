@@ -59,3 +59,8 @@ def run_bank_sync(from_timestamp: int, to_timestamp: int) -> int:
             service.sync_balance()
 
         return inserted_count
+
+
+if __name__ == "__main__":
+    sync_count = run_scheduled_bank_sync()
+    print(f"Inserted {sync_count} transactions")

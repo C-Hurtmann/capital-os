@@ -1,3 +1,4 @@
+import logging
 from datetime import UTC, datetime
 
 from app.core.settings import Settings
@@ -9,6 +10,8 @@ from app.repositories.balance import BalanceRepository
 from app.repositories.transactions import TransactionRepository
 
 UAH_CURRENCY_CODE = 980
+
+logger = logging.getLogger(__name__)
 
 
 class BankSyncService:
@@ -41,6 +44,7 @@ class BankSyncService:
         )
 
         self._balance_repository.save_snapshot(snapshot)
+        logger.info("Saved balance snapshot")
         return snapshot
 
     def sync_transactions(self, from_timestamp: int, to_timestamp: int) -> int:
@@ -69,5 +73,5 @@ class BankSyncService:
 
             if self._transaction_repository.insert_if_not_exists(transaction):
                 inserted_count += 1
-
+        logger.info(f"Inserted {inserted_count} transactions")
         return inserted_count
