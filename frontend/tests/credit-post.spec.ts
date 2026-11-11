@@ -1,3 +1,4 @@
+import { monthlyFixture } from "./monthlyFixture";
 import { test, expect, type Route } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 test.use({
@@ -335,5 +336,11 @@ test.beforeEach(async ({ page }) => {
         computedAt: "2026-11-11T12:00:00Z",
       },
     }),
+  );
+});
+
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/v1/cashflow/monthly", (r) =>
+    r.fulfill({ json: monthlyFixture }),
   );
 });

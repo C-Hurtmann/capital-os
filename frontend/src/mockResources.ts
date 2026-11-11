@@ -5,11 +5,14 @@ import type {
   CashflowResponse,
   HistoryPreset,
   HistoryView,
-  MonthlyView,
+  MonthlyCashflowResponse,
   SpendingView,
   CreditLimitResponse,
 } from "./contracts";
 import { parseCreditLimit, getCreditLimit } from "./creditLimit";
+import { getMonthlyCashflow } from "./monthlyCashflow";
+export const liveMonthly =
+  import.meta.env.VITE_MONTHLY_CASHFLOW_SOURCE === "api";
 import { getCashflow } from "./cashflow";
 export const liveCashflow = import.meta.env.VITE_CASHFLOW_SOURCE === "api";
 import { getBalance } from "./balance";
@@ -72,11 +75,19 @@ export const loadSpending = (signal: AbortSignal): Promise<SpendingView> =>
       categories: d.categories,
     };
   });
-export const loadMonthly = (signal: AbortSignal): Promise<MonthlyView> =>
-  mock(signal, () => ({
-    ...meta("2025-11-01"),
-    months: aggregate({ ...currentQuery, from: "2025-11-01" }).months,
-  }));
+export const loadMonthly = (
+  signal: AbortSignal,
+): Promise<MonthlyCashflowResponse> =>
+  liveMonthly
+    ? getMonthlyCashflow(signal)
+    : mock(signal, () => ({
+        from: "2025-11-01",
+        to: DEMO_TODAY,
+        timeZone: "Europe/Kyiv",
+        currency: "UAH",
+        computedAt: meta("2025-11-01").asOf,
+        months: aggregate({ ...currentQuery, from: "2025-11-01" }).months,
+      }));
 export const loadHistory = (
   preset: HistoryPreset,
   signal: AbortSignal,

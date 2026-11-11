@@ -89,12 +89,14 @@ export interface SpendingView extends PeriodMeta {
   totalMinor: number | null;
   categories: Dashboard["categories"];
 }
-export interface MonthlyView extends PeriodMeta {
-  months: {
-    month: string;
-    incomeMinor: number | null;
-    expenseMinor: number | null;
-  }[];
+/** Approved GET /api/v1/cashflow/monthly. */
+export interface MonthlyCashflowResponse {
+  from: string;
+  to: string;
+  timeZone: "Europe/Kyiv";
+  currency: "UAH";
+  computedAt: string;
+  months: { month: string; incomeMinor: number; expenseMinor: number }[];
 }
 
 /** Approved POST /api/v1/credit-limit. Omission means server time. */

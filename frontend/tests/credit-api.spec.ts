@@ -1,3 +1,4 @@
+import { monthlyFixture } from "./monthlyFixture";
 import { test, expect } from "@playwright/test";
 test.use({ baseURL: "http://127.0.0.1:5178" });
 test("API zero replaces demo storage, editor is available and other widgets remain independent", async ({
@@ -102,5 +103,11 @@ test.beforeEach(async ({ page }) => {
         computedAt: "2026-11-11T12:00:00Z",
       },
     }),
+  );
+});
+
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/v1/cashflow/monthly", (r) =>
+    r.fulfill({ json: monthlyFixture }),
   );
 });

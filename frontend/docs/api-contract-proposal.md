@@ -59,3 +59,9 @@ Verification on 2026-11-03: 56 unit tests and 23 browser tests passed, including
 ## Current-month cashflow — approved and integrated 11 November 2026
 
 Canonical contract: https://trello.com/c/1hxgaeET. GET /api/v1/cashflow/current returns from/to (Kyiv dates), timeZone Europe/Kyiv, currency UAH, non-null safe integer incomeMinor/expenseMinor/netMinor and UTC computedAt. Expenses are positive magnitude; net is signed. One captured cutoff defines both the calculation window and returned month. No coverage or asOf in this resource. HTTP 503 for storage failures, 500 for invalid aggregates; zero totals describe stored operations only. The independent frontend KPI consumes this DTO without changing shared PeriodMeta or integrating the 12-month chart. Calculation time is not bank freshness.
+
+## Monthly cashflow — integrated 11 November 2026
+
+Approved contract: https://trello.com/c/4de2GaE0. Local API mode uses GET /api/v1/cashflow/monthly for Monthly Income & Expenses. Dedicated MonthlyCashflowResponse validates 12 consecutive ordered months, safe nonnegative integers, UTC cutoff and its Kyiv date range. No coverage/asOf or frontend aggregation. Empty months remain zero-height bars with all 12 axis labels; keyboard tooltip exposes exact values. A completely zero chart remains successful. Period and partial-month label come from the saved response, with computedAt labelled Calculated. Existing useWidget retains old values/metadata on errors and cancels obsolete reads. Demo remains available; history and categories still use demo data.
+
+Verification: 126 unit tests, full 38-browser-test suite, lint/build passed. Real Chromium/Vite/FastAPI smoke returned 200 for 2025-12-01 through 2026-11-11, exactly 12 months; period/cutoff and keyboard tooltip matched server data. No bank sync or writes. Final zero-axis adjustment also passed the four monthly browser tests. Production authentication is outside this integration.

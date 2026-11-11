@@ -13,8 +13,12 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { HistoryView, SpendingView, MonthlyView } from "./contracts";
-import { money, monthLabel, shortDate } from "./format";
+import type {
+  HistoryView,
+  SpendingView,
+  MonthlyCashflowResponse,
+} from "./contracts";
+import { money, monthLabel, shortDate, bankTimestamp } from "./format";
 const colors = [
   "#6eb594",
   "#b17a38",
@@ -193,13 +197,13 @@ export function SpendingChart({ data }: { data: SpendingView }) {
     </section>
   );
 }
-export function MonthlyChart({ data }: { data: MonthlyView }) {
+export function MonthlyChart({ data }: { data: MonthlyCashflowResponse }) {
   return (
     <section className="panel monthly">
       <div className="panel-heading">
         <div>
           <span className="eyebrow">
-            LAST 12 MONTHS · CURRENT MONTH PARTIAL
+            12 MONTHS · {monthLabel(data.months[11].month)} THROUGH {data.to}
           </span>
           <h2>Monthly Income & Expenses</h2>
         </div>
@@ -214,7 +218,11 @@ export function MonthlyChart({ data }: { data: MonthlyView }) {
           </span>
         </div>
       </div>
-      {data.coverage === "unavailable" || !data.months.length ? (
+      <p className="helper">
+        {data.from} – {data.to} · Stored transaction totals · Calculated{" "}
+        <time dateTime={data.computedAt}>{bankTimestamp(data.computedAt)}</time>
+      </p>
+      {!data.months.length ? (
         <div className="empty">Monthly cashflow unavailable.</div>
       ) : (
         <div className="monthly-layout">
@@ -226,6 +234,7 @@ export function MonthlyChart({ data }: { data: MonthlyView }) {
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={data.months}
+                accessibilityLayer
                 margin={{ top: 15, right: 10, left: 0, bottom: 0 }}
                 barGap={5}
               >
@@ -236,6 +245,10 @@ export function MonthlyChart({ data }: { data: MonthlyView }) {
                 />
                 <XAxis
                   dataKey="month"
+                  interval={0}
+                  angle={-60}
+                  textAnchor="end"
+                  height={70}
                   tickFormatter={monthLabel}
                   axisLine={false}
                   tickLine={false}
@@ -243,7 +256,20 @@ export function MonthlyChart({ data }: { data: MonthlyView }) {
                 />
                 <YAxis
                   width={54}
-                  tickFormatter={(v) => `${Math.round(v / 100000)} k`}
+                  domain={
+                    data.months.every(
+                      (m) => m.incomeMinor === 0 && m.expenseMinor === 0,
+                    )
+                      ? [0, 100]
+                      : [0, "auto"]
+                  }
+                  tickFormatter={(v) =>
+                    v === 0
+                      ? "0"
+                      : Math.abs(v) < 100000
+                        ? `${v / 100}`
+                        : `${Math.round(v / 100000)} k`
+                  }
                   axisLine={false}
                   tickLine={false}
                   tick={{ fill: "#a5b4ae", fontSize: 11 }}

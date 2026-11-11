@@ -1,3 +1,4 @@
+import { monthlyFixture } from "./monthlyFixture";
 import { test, expect, type Route } from "@playwright/test";
 test.use({
   baseURL: "http://127.0.0.1:5178",
@@ -113,4 +114,10 @@ test("loading, navigation and late GET protection", async ({ page }) => {
   await expect(page.locator(".net-card > strong")).toContainText("1.00");
   await old.fulfill({ json: data }).catch(() => {});
   await expect(page.locator(".net-card > strong")).toContainText("1.00");
+});
+
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/v1/cashflow/monthly", (r) =>
+    r.fulfill({ json: monthlyFixture }),
+  );
 });

@@ -1,3 +1,4 @@
+import { monthlyFixture } from "./monthlyFixture";
 import { test, expect } from "@playwright/test";
 test.use({
   baseURL: "http://127.0.0.1:5178",
@@ -114,7 +115,8 @@ test("failed refresh retains snapshot and fetchedAt; retry never syncs bank", as
       (r) =>
         r === "GET /api/v1/balance" ||
         r === "GET /api/v1/credit-limit" ||
-        r === "GET /api/v1/cashflow/current",
+        r === "GET /api/v1/cashflow/current" ||
+        r === "GET /api/v1/cashflow/monthly",
     ),
   ).toBe(true);
 });
@@ -146,5 +148,11 @@ test.beforeEach(async ({ page }) => {
         computedAt: "2026-11-11T12:00:00Z",
       },
     }),
+  );
+});
+
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/v1/cashflow/monthly", (r) =>
+    r.fulfill({ json: monthlyFixture }),
   );
 });

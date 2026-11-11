@@ -43,7 +43,7 @@ export default function App() {
   const balance = useWidget(loadBalance, page === "dashboard");
   const cashflow = useWidget(loadCashflow, page === "dashboard");
   const spending = useWidget(loadSpending);
-  const monthly = useWidget(loadMonthly);
+  const monthly = useWidget(loadMonthly, page === "dashboard");
   const historyLoader = useCallback(
     (signal: AbortSignal) => loadHistory(preset, signal),
     [preset],
@@ -197,7 +197,7 @@ export default function App() {
             <div className="sync-status" role="status">
               <span className="status-dot" />
               {liveBalance
-                ? "Balance and cashflow from local backend · Charts use demo data · Reload does not sync with Monobank"
+                ? "Balance and cashflow from local backend · History and categories use demo data · Reload does not sync with Monobank"
                 : sync === "error"
                   ? "Refresh failed. Your previously loaded data is still available."
                   : sync === "loading"
