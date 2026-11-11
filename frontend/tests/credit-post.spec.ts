@@ -320,3 +320,20 @@ test.beforeEach(async ({ page }) => {
     }),
   );
 });
+
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/v1/cashflow/current", (r) =>
+    r.fulfill({
+      json: {
+        from: "2026-11-01",
+        to: "2026-11-11",
+        timeZone: "Europe/Kyiv",
+        currency: "UAH",
+        incomeMinor: 100,
+        expenseMinor: 0,
+        netMinor: 100,
+        computedAt: "2026-11-11T12:00:00Z",
+      },
+    }),
+  );
+});

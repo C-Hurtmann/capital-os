@@ -73,3 +73,9 @@ The client validates safe integer amounts and UTC fetchedAt at runtime. The card
 Verification: unit and browser coverage includes own funds, credit usage, null estimates, negative balance, 503, fetchedAt across browser timezones, loading and retry with retained data. Real backend smoke must be repeated when local FastAPI on port 8001 is running.
 
 Root `make dev` / `make frontend` starts the local API frontend (balance and credit limit). Use `make frontend-demo` or `npm run dev` for the isolated synthetic demo. Restart an already running Vite process after changing its mode; refresh alone does not switch modes.
+
+## Current-month cashflow — local API
+
+`make frontend` / `npm run dev:api` also connects the existing KPI to `GET /api/v1/cashflow/current`. Independent CashflowResponse has no coverage/asOf; runtime validation checks safe-integer totals, signs, net invariant, calendar dates and Europe/Kyiv period against the server cutoff. computedAt is labelled Calculated, never bank freshness. Old totals retain their original dates and calculation time during failed refresh. Dashboard entry and Reload data fetch the resource; Transactions does not. Demo remains synthetic, and the 12-month trend is not integrated by this change.
+
+Verified 11 November 2026: 100 unit tests, 34 browser tests, lint and build passed. Real browser GET through Vite to FastAPI/DynamoDB Local returned incomeMinor=1147253, expenseMinor=3873988, netMinor=-2726735; displayed values and period/cutoff matched. No bank sync or data mutation. Playwright demo server uses isolated port 5177, API tests use 5178, leaving interactive port 5173 available.

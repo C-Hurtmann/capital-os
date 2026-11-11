@@ -18,6 +18,7 @@ import {
   loadSpending,
   liveCredit,
   liveBalance,
+  liveCashflow,
 } from "./mockResources";
 import { useCreditLimit } from "./useCreditLimit";
 import { useWidget } from "./useWidget";
@@ -40,7 +41,7 @@ export default function App() {
     [lastSync, setLastSync] = useState(""),
     [editing, setEditing] = useState(false);
   const balance = useWidget(loadBalance, page === "dashboard");
-  const cashflow = useWidget(loadCashflow);
+  const cashflow = useWidget(loadCashflow, page === "dashboard");
   const spending = useWidget(loadSpending);
   const monthly = useWidget(loadMonthly);
   const historyLoader = useCallback(
@@ -196,7 +197,7 @@ export default function App() {
             <div className="sync-status" role="status">
               <span className="status-dot" />
               {liveBalance
-                ? "Bank balance from saved snapshot · Other analytics use demo data · Reload does not sync with Monobank"
+                ? "Balance and cashflow from local backend · Charts use demo data · Reload does not sync with Monobank"
                 : sync === "error"
                   ? "Refresh failed. Your previously loaded data is still available."
                   : sync === "loading"
@@ -300,7 +301,7 @@ export default function App() {
                     </strong>
                     <span>
                       {cashflow.data
-                        ? `${shortDate(cashflow.data.from)} – ${shortDate(cashflow.data.to)} · Month to date`
+                        ? `${cashflow.data.from} – ${cashflow.data.to} · Month to date`
                         : "Current calendar month"}
                     </span>
                     <div className="cashflow-rows">
@@ -320,8 +321,19 @@ export default function App() {
                       </div>
                     </div>
                     <p className="helper">
-                      Actual income minus actual expenses. Includes outgoing
-                      transfers. No planned amounts.
+                      {liveCashflow
+                        ? "Based on stored transactions. Includes outgoing transfers. No planned amounts."
+                        : "Actual income minus actual expenses. Includes outgoing transfers. No planned amounts."}
+                      {liveCashflow && cashflow.data && (
+                        <>
+                          {" "}
+                          Calculated{" "}
+                          <time dateTime={cashflow.data.computedAt}>
+                            {bankTimestamp(cashflow.data.computedAt)}
+                          </time>
+                          .
+                        </>
+                      )}
                     </p>
                   </article>
                 </section>

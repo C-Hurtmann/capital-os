@@ -71,10 +71,16 @@ export interface BalanceResponse {
   creditUsedMinor: number | null;
   fetchedAt: string;
 }
-export interface CashflowView extends PeriodMeta {
-  incomeMinor: number | null;
-  expenseMinor: number | null;
-  netMinor: number | null;
+/** Approved GET /api/v1/cashflow/current; totals of stored transactions. */
+export interface CashflowResponse {
+  from: string;
+  to: string;
+  timeZone: "Europe/Kyiv";
+  currency: "UAH";
+  incomeMinor: number;
+  expenseMinor: number;
+  netMinor: number;
+  computedAt: string;
 }
 export interface HistoryView extends PeriodMeta {
   points: { date: string; balanceMinor: number | null }[];

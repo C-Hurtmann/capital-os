@@ -111,7 +111,10 @@ test("failed refresh retains snapshot and fetchedAt; retry never syncs bank", as
   await expect(page.locator(".balance [role=alert]")).toHaveCount(0);
   expect(
     requests.every(
-      (r) => r === "GET /api/v1/balance" || r === "GET /api/v1/credit-limit",
+      (r) =>
+        r === "GET /api/v1/balance" ||
+        r === "GET /api/v1/credit-limit" ||
+        r === "GET /api/v1/cashflow/current",
     ),
   ).toBe(true);
 });
@@ -127,4 +130,21 @@ test("initial loading does not substitute demo balance", async ({ page }) => {
   await expect(page.locator(".balance > strong")).toHaveText("Unavailable");
   release();
   await expect(page.locator(".balance > strong")).toContainText("70,000.00");
+});
+
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/v1/cashflow/current", (r) =>
+    r.fulfill({
+      json: {
+        from: "2026-11-01",
+        to: "2026-11-11",
+        timeZone: "Europe/Kyiv",
+        currency: "UAH",
+        incomeMinor: 100,
+        expenseMinor: 0,
+        netMinor: 100,
+        computedAt: "2026-11-11T12:00:00Z",
+      },
+    }),
+  );
 });

@@ -2,7 +2,7 @@
 import { aggregate, DEMO_TODAY } from "./data";
 import type {
   BalanceResponse,
-  CashflowView,
+  CashflowResponse,
   HistoryPreset,
   HistoryView,
   MonthlyView,
@@ -10,6 +10,8 @@ import type {
   CreditLimitResponse,
 } from "./contracts";
 import { parseCreditLimit, getCreditLimit } from "./creditLimit";
+import { getCashflow } from "./cashflow";
+export const liveCashflow = import.meta.env.VITE_CASHFLOW_SOURCE === "api";
 import { getBalance } from "./balance";
 export const liveBalance = import.meta.env.VITE_BALANCE_SOURCE === "api";
 const currentQuery = { from: "2026-10-01", to: DEMO_TODAY, currency: "UAH" };
@@ -45,16 +47,22 @@ export const loadBalance = (signal: AbortSignal): Promise<BalanceResponse> =>
         creditUsedMinor: null,
         fetchedAt: meta(currentQuery.from).asOf,
       }));
-export const loadCashflow = (signal: AbortSignal): Promise<CashflowView> =>
-  mock(signal, () => {
-    const o = aggregate(currentQuery).overview;
-    return {
-      ...meta(currentQuery.from),
-      incomeMinor: o.incomeMinor,
-      expenseMinor: o.expenseMinor,
-      netMinor: o.incomeMinor - o.expenseMinor,
-    };
-  });
+export const loadCashflow = (signal: AbortSignal): Promise<CashflowResponse> =>
+  liveCashflow
+    ? getCashflow(signal)
+    : mock(signal, () => {
+        const o = aggregate(currentQuery).overview;
+        return {
+          from: currentQuery.from,
+          to: currentQuery.to,
+          timeZone: "Europe/Kyiv",
+          currency: "UAH",
+          computedAt: meta(currentQuery.from).asOf,
+          incomeMinor: o.incomeMinor,
+          expenseMinor: o.expenseMinor,
+          netMinor: o.incomeMinor - o.expenseMinor,
+        };
+      });
 export const loadSpending = (signal: AbortSignal): Promise<SpendingView> =>
   mock(signal, () => {
     const d = aggregate(currentQuery);

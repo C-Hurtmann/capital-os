@@ -9,6 +9,9 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     define: {
+      "import.meta.env.VITE_CASHFLOW_SOURCE": JSON.stringify(
+        mode === "local-api" ? "api" : env.VITE_CASHFLOW_SOURCE || "demo",
+      ),
       "import.meta.env.VITE_BALANCE_SOURCE": JSON.stringify(
         mode === "local-api" ? "api" : env.VITE_BALANCE_SOURCE || "demo",
       ),
