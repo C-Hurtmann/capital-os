@@ -1,1 +1,2 @@
 ACCOUNT_ID_PLACEHOLDER = "monobank-main"
+MAX_SAFE_INTEGER = 2**53 - 1

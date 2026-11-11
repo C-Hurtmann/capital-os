@@ -4,7 +4,7 @@ from typing import Annotated
 from botocore.exceptions import ClientError
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.helpers import ACCOUNT_ID_PLACEHOLDER
+from app.constants import ACCOUNT_ID_PLACEHOLDER
 from app.repositories.balance import BalanceRepository
 from app.repositories.credit_limit import CreditLimitRepository
 from app.schemas.balance import BalanceResponse

@@ -1,8 +1,8 @@
 import logging
 from datetime import UTC, datetime
 
+from app.constants import ACCOUNT_ID_PLACEHOLDER
 from app.core.settings import Settings
-from app.helpers import ACCOUNT_ID_PLACEHOLDER
 from app.integrations.monobank import MonobankClient
 from app.models.balance_snapshot import BalanceSnapshot
 from app.models.transaction import Transaction

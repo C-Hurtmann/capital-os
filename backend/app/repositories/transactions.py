@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from botocore.exceptions import ClientError
 
-from app.helpers import ACCOUNT_ID_PLACEHOLDER
+from app.constants import ACCOUNT_ID_PLACEHOLDER
 from app.models.transaction import Transaction
 from app.repositories.base import BaseRepository
 

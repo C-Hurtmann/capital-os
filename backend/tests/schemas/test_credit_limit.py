@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pydantic import ValidationError
 
+from app.constants import MAX_SAFE_INTEGER
 from app.schemas.credit_limit import PostCreditLimitRequest
 
 
@@ -27,7 +28,7 @@ def test_valid_request_with_effective_from() -> None:
     )
 
 
-@pytest.mark.parametrize("amount", [0, 2**53 - 1])
+@pytest.mark.parametrize("amount", [0, MAX_SAFE_INTEGER])
 def test_valid_amount_boundaries(amount: int) -> None:
     request = PostCreditLimitRequest.model_validate({"amountMinor": amount})
 

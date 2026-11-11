@@ -9,11 +9,13 @@ from pydantic import (
     model_validator,
 )
 
+from app.constants import MAX_SAFE_INTEGER
+
 
 class CreditLimitResponse(BaseModel):
     amount_minor: int | None = Field(
         ge=0,
-        le=2**53 - 1,  # JS restriction
+        le=MAX_SAFE_INTEGER,
         serialization_alias="amountMinor",
     )
     effective_from: AwareDatetime | None = Field(serialization_alias="effectiveFrom")
@@ -32,7 +34,7 @@ class PostCreditLimitRequest(BaseModel):
         alias="amountMinor",
         strict=True,
         ge=0,
-        le=2**53 - 1,
+        le=MAX_SAFE_INTEGER,
     )
     effective_from: AwareDatetime | None = Field(
         default=None,

@@ -1,62 +1,82 @@
-from collections.abc import Iterable
-from datetime import UTC, datetime
-from typing import NamedTuple
+from dataclasses import dataclass
+from datetime import UTC, date, datetime
+from typing import Annotated
 from zoneinfo import ZoneInfo
 
-from app.models.transaction import Transaction
+from fastapi import Depends
+
+from app.repositories.transactions import TransactionRepository
 
 KYIV_TZ = ZoneInfo("Europe/Kyiv")
 
 
-class CashflowTotals(NamedTuple):
+@dataclass(frozen=True)
+class CashflowResult:
+    from_date: date
+    to_date: date
     income_minor: int
-    expenses_minor: int
-    net_minor: int
+    expense_minor: int
+    computed_at: datetime
+
+    @property
+    def net_minor(self) -> int:
+        return self.income_minor - self.expense_minor
 
 
-def month_bounds_utc(year: int, month: int) -> tuple[datetime, datetime]:
-    start = datetime(year, month, 1, tzinfo=KYIV_TZ)
+class CashflowService:
+    def __init__(
+        self,
+        transaction_repository: Annotated[
+            TransactionRepository, Depends(TransactionRepository.get_repository)
+        ],
+    ) -> None:
+        self._transaction_repository = transaction_repository
 
-    if month == 12:
-        next_year, next_month = year + 1, 1
-    else:
-        next_year, next_month = year, month + 1
+    def get_current(self) -> CashflowResult:
+        now = datetime.now(UTC)
 
-    end = datetime(next_year, next_month, 1, tzinfo=KYIV_TZ)
+        # DynamoDB transaction timestamps have millisecond precision.
+        cutoff = now.replace(microsecond=(now.microsecond // 1000) * 1000)
 
-    return start.astimezone(UTC), end.astimezone(UTC)
+        local_date = cutoff.astimezone(KYIV_TZ).date()
+        month_start = datetime(
+            local_date.year,
+            local_date.month,
+            1,
+            tzinfo=KYIV_TZ,
+        ).astimezone(UTC)
 
+        from_ms = int(month_start.timestamp()) * 1000
+        to_ms = int(cutoff.timestamp()) * 1000 + cutoff.microsecond // 1000
 
-def summarize_cashflow(
-    transactions: Iterable[Transaction],
-) -> CashflowTotals:
-    income = 0
-    expenses = 0
+        income = 0
+        expenses = 0
 
-    for transaction in transactions:
-        amount = transaction.amount_minor
+        if from_ms < to_ms:
+            last_key = None
 
-        if amount > 0:
-            income += amount
-        elif amount < 0:
-            expenses += amount
+            while True:
+                transactions, last_key = self._transaction_repository.query_period_page(
+                    from_ms=from_ms,
+                    to_ms=to_ms,
+                    exclusive_start_key=last_key,
+                )
 
-    return CashflowTotals(
-        income_minor=income,
-        expenses_minor=expenses,
-        net_minor=income + expenses,
-    )
+                for transaction in transactions:
+                    amount = transaction.amount_minor
 
+                    if amount > 0:
+                        income += amount
+                    elif amount < 0:
+                        expenses -= amount
 
-def summarize_monthly_cashflow(
-    transactions: Iterable[Transaction],
-) -> dict[tuple[int, int], CashflowTotals]:
-    by_month: dict[tuple[int, int], list[Transaction]] = {}
+                if not last_key:
+                    break
 
-    for transaction in transactions:
-        local_time = transaction.occurred_at.astimezone(KYIV_TZ)
-        month = (local_time.year, local_time.month)
-
-        by_month.setdefault(month, []).append(transaction)
-
-    return {month: summarize_cashflow(items) for month, items in by_month.items()}
+        return CashflowResult(
+            from_date=month_start.astimezone(KYIV_TZ).date(),
+            to_date=local_date,
+            income_minor=income,
+            expense_minor=expenses,
+            computed_at=cutoff,
+        )
