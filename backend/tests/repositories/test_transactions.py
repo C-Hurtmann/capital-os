@@ -77,6 +77,123 @@ def test_query_period_page_returns_empty_result() -> None:
     client.query.assert_called_once()
 
 
+def test_query_period_collects_all_pages() -> None:
+    first_item = {
+        "bankId": {"S": "tx-123"},
+        "occurredAtMs": {"N": "1750000000000"},
+        "amountMinor": {"N": "-12500"},
+        "operationAmountMinor": {"N": "-12500"},
+        "operationCurrencyCode": {"N": "980"},
+        "balanceMinor": {"N": "150000"},
+        "mcc": {"N": "5411"},
+        "commissionMinor": {"N": "0"},
+    }
+
+    second_item = {
+        **first_item,
+        "bankId": {"S": "tx-456"},
+        "amountMinor": {"N": "5000"},
+    }
+
+    next_key = {
+        "PK": {"S": "ACCOUNT#monobank-main"},
+        "SK": {"S": "TX#1750000000000#tx-123"},
+    }
+
+    client = Mock()
+    client.query.side_effect = [
+        {"Items": [first_item], "LastEvaluatedKey": next_key},
+        {"Items": [second_item]},
+    ]
+
+    repository = TransactionRepository(client, "test-table")
+
+    transactions = repository.query_period(
+        from_ms=1700000000000,
+        to_ms=1800000000000,
+    )
+
+    assert [tx.bank_id for tx in transactions] == [
+        "tx-123",
+        "tx-456",
+    ]
+    assert [tx.amount_minor for tx in transactions] == [
+        -12500,
+        5000,
+    ]
+
+    assert client.query.call_count == 2
+
+    first_call, second_call = client.query.call_args_list
+
+    assert "ExclusiveStartKey" not in first_call.kwargs
+    assert second_call.kwargs["ExclusiveStartKey"] == next_key
+
+
+def test_query_period_returns_empty_list() -> None:
+    client = Mock()
+    client.query.return_value = {"Items": []}
+
+    repository = TransactionRepository(client, "test-table")
+
+    assert (
+        repository.query_period(
+            from_ms=1700000000000,
+            to_ms=1800000000000,
+        )
+        == []
+    )
+
+    client.query.assert_called_once()
+
+
+def test_query_period_propagates_second_page_failure() -> None:
+    client = Mock()
+
+    next_key = {
+        "PK": {"S": "ACCOUNT#monobank-main"},
+        "SK": {"S": "TX#1750000000000#tx-123"},
+    }
+
+    error = ClientError(
+        {
+            "Error": {
+                "Code": "ProvisionedThroughputExceededException",
+                "Message": "Throughput exceeded",
+            }
+        },
+        "Query",
+    )
+
+    client.query.side_effect = [
+        {"Items": [], "LastEvaluatedKey": next_key},
+        error,
+    ]
+
+    repository = TransactionRepository(client, "test-table")
+
+    with pytest.raises(ClientError):
+        repository.query_period(
+            from_ms=1700000000000,
+            to_ms=1800000000000,
+        )
+
+    assert client.query.call_count == 2
+
+
+def test_query_period_rejects_invalid_range() -> None:
+    client = Mock()
+    repository = TransactionRepository(client, "test-table")
+
+    with pytest.raises(ValueError):
+        repository.query_period(
+            from_ms=1800000000000,
+            to_ms=1700000000000,
+        )
+
+    client.query.assert_not_called()
+
+
 @pytest.fixture
 def transaction() -> Transaction:
     return Transaction(
@@ -131,6 +248,7 @@ def test_insert_if_not_exists_duplicate(
         },
         "PutItem",
     )
+
     repository = TransactionRepository(client, "test-table")
 
     assert repository.insert_if_not_exists(transaction) is False
@@ -149,6 +267,7 @@ def test_insert_if_not_exists_propagates_error(
         },
         "PutItem",
     )
+
     repository = TransactionRepository(client, "test-table")
 
     with pytest.raises(ClientError):

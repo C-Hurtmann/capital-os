@@ -56,6 +56,21 @@ class TransactionRepository(BaseRepository):
         transactions = [self._to_transaction(item) for item in response["Items"]]
         return transactions, response.get("LastEvaluatedKey")
 
+    def query_period(self, from_ms: int, to_ms: int) -> list[Transaction]:
+        transactions = []
+        last_key = None
+
+        while True:
+            page, last_key = self.query_period_page(
+                from_ms=from_ms,
+                to_ms=to_ms,
+                exclusive_start_key=last_key,
+            )
+            transactions.extend(page)
+
+            if not last_key:
+                return transactions
+
     def insert_if_not_exists(self, transaction: Transaction) -> bool:
         occurred_at_ms = int(transaction.occurred_at.timestamp() * 1000)
 
