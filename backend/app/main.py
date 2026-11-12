@@ -11,6 +11,7 @@ from fastapi.responses import JSONResponse, Response
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.api.balance import router as balance_router
+from app.api.balance_history import router as balance_history_router
 from app.api.cashflow import router as cashflow_router
 from app.api.credit_limit import router as credit_limit_router
 from app.api.health import router as health_router
@@ -26,6 +27,7 @@ app = FastAPI(
 app.include_router(health_router)
 app.include_router(credit_limit_router)
 app.include_router(balance_router)
+app.include_router(balance_history_router)
 app.include_router(cashflow_router)
 
 

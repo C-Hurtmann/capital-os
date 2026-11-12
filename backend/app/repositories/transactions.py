@@ -71,6 +71,22 @@ class TransactionRepository(BaseRepository):
             if not last_key:
                 return transactions
 
+    def get_latest_before(self, from_ms: int) -> Transaction | None:
+        response = self.client.query(
+            TableName=self.table_name,
+            KeyConditionExpression="PK = :pk AND SK BETWEEN :prefix AND :before",
+            ExpressionAttributeValues={
+                ":pk": {"S": f"ACCOUNT#{ACCOUNT_ID_PLACEHOLDER}"},
+                ":prefix": {"S": "TX#"},
+                ":before": {"S": f"TX#{from_ms:013d}"},
+            },
+            ScanIndexForward=False,
+            Limit=1,
+        )
+
+        items = response["Items"]
+        return self._to_transaction(items[0]) if items else None
+
     def insert_if_not_exists(self, transaction: Transaction) -> bool:
         occurred_at_ms = int(transaction.occurred_at.timestamp() * 1000)
 

@@ -294,3 +294,94 @@ def test_same_timestamp_different_bank_ids(
 
     assert first_key == "TX#1750000000000#tx-123"
     assert second_key == "TX#1750000000000#tx-456"
+
+
+def test_get_latest_before_returns_transaction(
+    transaction: Transaction,
+) -> None:
+    client = Mock()
+    client.query.return_value = {
+        "Items": [
+            {
+                "bankId": {"S": transaction.bank_id},
+                "occurredAtMs": {"N": "1750000000000"},
+                "amountMinor": {"N": "-12500"},
+                "operationAmountMinor": {"N": "-12500"},
+                "operationCurrencyCode": {"N": "980"},
+                "balanceMinor": {"N": "150000"},
+                "mcc": {"N": "5411"},
+                "commissionMinor": {"N": "0"},
+            }
+        ]
+    }
+
+    repository = TransactionRepository(client, "test-table")
+
+    result = repository.get_latest_before(
+        from_ms=1750000000001,
+    )
+
+    assert result == transaction
+
+    client.query.assert_called_once_with(
+        TableName="test-table",
+        KeyConditionExpression=("PK = :pk AND SK BETWEEN :prefix AND :before"),
+        ExpressionAttributeValues={
+            ":pk": {"S": "ACCOUNT#monobank-main"},
+            ":prefix": {"S": "TX#"},
+            ":before": {"S": "TX#1750000000001"},
+        },
+        ScanIndexForward=False,
+        Limit=1,
+    )
+
+
+def test_get_latest_before_returns_none() -> None:
+    client = Mock()
+    client.query.return_value = {"Items": []}
+
+    repository = TransactionRepository(client, "test-table")
+
+    result = repository.get_latest_before(
+        from_ms=1750000000000,
+    )
+
+    assert result is None
+    client.query.assert_called_once()
+
+
+def test_get_latest_before_uses_exclusive_time_boundary() -> None:
+    client = Mock()
+    client.query.return_value = {"Items": []}
+
+    repository = TransactionRepository(client, "test-table")
+
+    repository.get_latest_before(from_ms=1750000000000)
+
+    params = client.query.call_args.kwargs
+
+    assert params["ExpressionAttributeValues"][":before"] == {"S": "TX#1750000000000"}
+    assert params["ScanIndexForward"] is False
+    assert params["Limit"] == 1
+
+    # The actual transaction key has an additional #bankId suffix.
+    # Therefore TX#1750000000000#tx-123 is greater than the upper
+    # bound TX#1750000000000 and cannot be returned.
+
+
+def test_get_latest_before_propagates_storage_error() -> None:
+    client = Mock()
+    client.query.side_effect = ClientError(
+        {
+            "Error": {
+                "Code": "ProvisionedThroughputExceededException",
+                "Message": "Throttled",
+            }
+        },
+        "Query",
+    )
+
+    repository = TransactionRepository(client, "test-table")
+
+    with pytest.raises(ClientError):
+        repository.get_latest_before(from_ms=1750000000000)
