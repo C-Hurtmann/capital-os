@@ -14,11 +14,12 @@ import {
   YAxis,
 } from "recharts";
 import type {
-  HistoryView,
+  BalanceHistoryResponse,
   SpendingView,
   MonthlyCashflowResponse,
 } from "./contracts";
 import { money, monthLabel, shortDate, bankTimestamp } from "./format";
+import { dayNumber, dayString, DAY_MS } from "./balanceHistory";
 const colors = [
   "#6eb594",
   "#b17a38",
@@ -31,9 +32,15 @@ export function HistoryChart({
   data,
   historyControls,
 }: {
-  data: HistoryView;
+  data: BalanceHistoryResponse;
   historyControls: ReactNode;
 }) {
+  const points = data.points.map((p) => ({ ...p, x: dayNumber(p.date) }));
+  const firstKnown = data.points.find((p) => p.balanceMinor !== null);
+  const start = data.from ? dayNumber(data.from) : dayNumber(data.to);
+  const end = dayNumber(data.to);
+  const single = start === end;
+  const dateLabel = (v: number) => shortDate(dayString(v));
   return (
     <section className="panel timeline">
       <div className="panel-heading">
@@ -44,9 +51,11 @@ export function HistoryChart({
         <span className="unit">UAH</span>
       </div>
       {historyControls}
-      {data.coverage === "unavailable" ||
-      !data.points.some((p) => p.balanceMinor !== null) ? (
-        <div className="empty">Balance history unavailable.</div>
+      {data.points[0]?.balanceMinor === null && firstKnown && (
+        <p className="helper">No data before {firstKnown.date}.</p>
+      )}
+      {!firstKnown ? (
+        <div className="empty">No data.</div>
       ) : (
         <div
           className="chart"
@@ -55,7 +64,8 @@ export function HistoryChart({
         >
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
-              data={data.points}
+              data={points}
+              accessibilityLayer
               margin={{ top: 15, right: 12, left: 0, bottom: 0 }}
             >
               <defs>
@@ -70,8 +80,15 @@ export function HistoryChart({
                 strokeDasharray="3 4"
               />
               <XAxis
-                dataKey="date"
-                tickFormatter={shortDate}
+                dataKey="x"
+                type="number"
+                scale="time"
+                domain={
+                  single ? [start - DAY_MS / 2, end + DAY_MS / 2] : [start, end]
+                }
+                ticks={single ? [start] : undefined}
+                allowDataOverflow
+                tickFormatter={dateLabel}
                 minTickGap={45}
                 axisLine={false}
                 tickLine={false}
@@ -86,18 +103,27 @@ export function HistoryChart({
                 domain={["auto", "auto"]}
               />
               <Tooltip
-                labelFormatter={(v) => shortDate(String(v))}
-                formatter={(v) => [money(Number(v)), "Balance"]}
+                labelFormatter={(v) => dayString(Number(v))}
+                formatter={(v) => [
+                  v == null ? "No data" : money(Number(v)),
+                  "Balance",
+                ]}
                 contentStyle={{
                   borderRadius: 10,
                   border: "1px solid #47554f",
                 }}
               />
               <Area
-                type="monotone"
+                type="linear"
                 dataKey="balanceMinor"
                 stroke="#6eb594"
                 strokeWidth={2.5}
+                dot={
+                  data.points.filter((p) => p.balanceMinor !== null).length ===
+                  1
+                    ? { r: 4 }
+                    : false
+                }
                 fill="url(#balanceFill)"
                 name="Balance"
                 connectNulls={false}

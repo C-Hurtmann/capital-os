@@ -1,5 +1,5 @@
 import CreditDrawer from "./CreditDrawer";
-import { lazy, Suspense, useCallback, useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import {
   Layers3,
   LayoutDashboard,
@@ -13,7 +13,6 @@ import type { HistoryPreset } from "./contracts";
 import {
   loadBalance,
   loadCashflow,
-  loadHistory,
   loadMonthly,
   loadSpending,
   liveCredit,
@@ -21,6 +20,7 @@ import {
   liveCashflow,
 } from "./mockResources";
 import { useCreditLimit } from "./useCreditLimit";
+import { useBalanceHistory } from "./useBalanceHistory";
 import { useWidget } from "./useWidget";
 import WidgetStatus from "./WidgetStatus";
 import { money, shortDate, bankTimestamp } from "./format";
@@ -36,7 +36,7 @@ const SpendingChart = lazy(() =>
 );
 export default function App() {
   const [page, setPage] = useState("dashboard"),
-    [preset, setPreset] = useState<HistoryPreset>("3M"), // Review default; pending approval.
+    [preset, setPreset] = useState<HistoryPreset>("3M"),
     [sync, setSync] = useState("idle"),
     [lastSync, setLastSync] = useState(""),
     [editing, setEditing] = useState(false);
@@ -44,11 +44,7 @@ export default function App() {
   const cashflow = useWidget(loadCashflow, page === "dashboard");
   const spending = useWidget(loadSpending);
   const monthly = useWidget(loadMonthly, page === "dashboard");
-  const historyLoader = useCallback(
-    (signal: AbortSignal) => loadHistory(preset, signal),
-    [preset],
-  );
-  const history = useWidget(historyLoader);
+  const history = useBalanceHistory(preset, page === "dashboard");
   const credit = useCreditLimit(page === "dashboard");
   const reloadSpending = spending.reload;
   useEffect(() => {
@@ -96,9 +92,14 @@ export default function App() {
       </div>
       {history.data && (
         <p className="range-label">
-          {shortDate(history.data.from)} – {shortDate(history.data.to)} ·
-          History only · {history.data.coverage} · As of{" "}
-          {shortDate(history.data.asOf)}
+          {history.data.from
+            ? `${shortDate(history.data.from)} – ${shortDate(history.data.to)}`
+            : "No recorded history"}{" "}
+          · History only · Calculated{" "}
+          <time dateTime={history.data.computedAt}>
+            {bankTimestamp(history.data.computedAt)}
+          </time>{" "}
+          · {history.data.to} partial day
         </p>
       )}
     </>
@@ -197,7 +198,7 @@ export default function App() {
             <div className="sync-status" role="status">
               <span className="status-dot" />
               {liveBalance
-                ? "Balance and cashflow from local backend · History and categories use demo data · Reload does not sync with Monobank"
+                ? "Balance and cashflow from local backend · Categories use demo data · Reload does not sync with Monobank"
                 : sync === "error"
                   ? "Refresh failed. Your previously loaded data is still available."
                   : sync === "loading"

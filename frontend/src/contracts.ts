@@ -82,7 +82,13 @@ export interface CashflowResponse {
   netMinor: number;
   computedAt: string;
 }
-export interface HistoryView extends PeriodMeta {
+/** Approved GET /api/v1/balance-history. */
+export interface BalanceHistoryResponse {
+  from: string | null;
+  to: string;
+  computedAt: string;
+  timeZone: "Europe/Kyiv";
+  currency: "UAH";
   points: { date: string; balanceMinor: number | null }[];
 }
 export interface SpendingView extends PeriodMeta {

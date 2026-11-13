@@ -1,3 +1,4 @@
+import { historyFixture } from "./historyFixture";
 import { test, expect, type Route } from "@playwright/test";
 import { monthlyFixture as data } from "./monthlyFixture";
 test.use({
@@ -119,4 +120,14 @@ test("loading and late GET do not replace newer data", async ({ page }) => {
   await expect(page.locator(".monthly time")).toBeVisible();
   await old.fulfill({ json: { ...data, to: "bad" } }).catch(() => {});
   await expect(page.locator(".resource-monthly [role=alert]")).toHaveCount(0);
+});
+
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/v1/balance-history?*", (r) =>
+    r.fulfill({
+      json: historyFixture(
+        new URL(r.request().url()).searchParams.get("preset") || "3M",
+      ),
+    }),
+  );
 });

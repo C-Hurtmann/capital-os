@@ -1,3 +1,4 @@
+import { historyFixture } from "./historyFixture";
 import { monthlyFixture } from "./monthlyFixture";
 import { test, expect } from "@playwright/test";
 test.use({
@@ -116,7 +117,8 @@ test("failed refresh retains snapshot and fetchedAt; retry never syncs bank", as
         r === "GET /api/v1/balance" ||
         r === "GET /api/v1/credit-limit" ||
         r === "GET /api/v1/cashflow/current" ||
-        r === "GET /api/v1/cashflow/monthly",
+        r === "GET /api/v1/cashflow/monthly" ||
+        r === "GET /api/v1/balance-history",
     ),
   ).toBe(true);
 });
@@ -154,5 +156,15 @@ test.beforeEach(async ({ page }) => {
 test.beforeEach(async ({ page }) => {
   await page.route("**/api/v1/cashflow/monthly", (r) =>
     r.fulfill({ json: monthlyFixture }),
+  );
+});
+
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/v1/balance-history?*", (r) =>
+    r.fulfill({
+      json: historyFixture(
+        new URL(r.request().url()).searchParams.get("preset") || "3M",
+      ),
+    }),
   );
 });

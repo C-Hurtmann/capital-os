@@ -4,7 +4,7 @@ import type {
   BalanceResponse,
   CashflowResponse,
   HistoryPreset,
-  HistoryView,
+  BalanceHistoryResponse,
   MonthlyCashflowResponse,
   SpendingView,
   CreditLimitResponse,
@@ -15,16 +15,11 @@ export const liveMonthly =
   import.meta.env.VITE_MONTHLY_CASHFLOW_SOURCE === "api";
 import { getCashflow } from "./cashflow";
 export const liveCashflow = import.meta.env.VITE_CASHFLOW_SOURCE === "api";
+import { getBalanceHistory, presetFrom } from "./balanceHistory";
+export const liveHistory = import.meta.env.VITE_HISTORY_SOURCE === "api";
 import { getBalance } from "./balance";
 export const liveBalance = import.meta.env.VITE_BALANCE_SOURCE === "api";
 const currentQuery = { from: "2026-10-01", to: DEMO_TODAY, currency: "UAH" };
-const ranges: Record<HistoryPreset, string> = {
-  "1M": "2026-10-01",
-  "3M": "2026-08-01",
-  "6M": "2026-05-01",
-  "12M": "2025-10-30",
-  All: "2025-01-01",
-};
 function meta(from: string) {
   return {
     from,
@@ -91,11 +86,21 @@ export const loadMonthly = (
 export const loadHistory = (
   preset: HistoryPreset,
   signal: AbortSignal,
-): Promise<HistoryView> =>
-  mock(signal, () => ({
-    ...meta(ranges[preset]),
-    points: aggregate({ ...currentQuery, from: ranges[preset] }).timeline,
-  }));
+): Promise<BalanceHistoryResponse> =>
+  liveHistory
+    ? getBalanceHistory(preset, signal)
+    : mock(signal, () => {
+        const from =
+          preset === "All" ? "2025-01-01" : presetFrom(preset, DEMO_TODAY);
+        return {
+          from,
+          to: DEMO_TODAY,
+          timeZone: "Europe/Kyiv",
+          currency: "UAH",
+          computedAt: meta(from).asOf,
+          points: aggregate({ ...currentQuery, from }).timeline,
+        };
+      });
 // Opt-in local integration only. Other widgets remain explicitly synthetic.
 export const liveCredit = import.meta.env.VITE_CREDIT_LIMIT_SOURCE === "api";
 export const loadCredit = (
