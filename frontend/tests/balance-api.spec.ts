@@ -72,7 +72,9 @@ test("503 has no fake zero; retry loads snapshot independently", async ({
   );
   await page.goto("/");
   await expect(page.locator(".balance > strong")).toHaveText("Unavailable");
-  await expect(page.getByLabel("Explore category")).toBeVisible();
+  await expect(
+    page.getByRole("group", { name: "Spending categories", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Retry balance", exact: true }),
   ).toBeVisible();

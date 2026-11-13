@@ -67,7 +67,9 @@ test("503 retries to zero observed totals without claiming no activity", async (
     page.getByRole("button", { name: "Retry cashflow", exact: true }),
   ).toBeVisible();
   await expect(page.locator(".net-card > strong")).toHaveText("Unavailable");
-  await expect(page.getByLabel("Explore category")).toBeVisible();
+  await expect(
+    page.getByRole("group", { name: "Spending categories", exact: true }),
+  ).toBeVisible();
   fail = false;
   await page
     .getByRole("button", { name: "Retry cashflow", exact: true })

@@ -17,7 +17,9 @@ test("API zero replaces demo storage, editor is available and other widgets rema
   await page.goto("/");
   await expect(page.locator(".limit-row")).toContainText("0.00");
   await expect(page.getByRole("button", { name: "Edit limit" })).toBeEnabled();
-  await expect(page.getByLabel("Explore category")).toBeVisible();
+  await expect(
+    page.getByRole("group", { name: "Spending categories", exact: true }),
+  ).toBeVisible();
   expect(
     await page.evaluate(() =>
       localStorage.getItem("capital-demo-credit-limit"),
@@ -39,7 +41,9 @@ test("gateway error keeps other widgets usable and retry accepts unset", async (
       });
   });
   await page.goto("/");
-  await expect(page.getByLabel("Explore category")).toBeVisible();
+  await expect(
+    page.getByRole("group", { name: "Spending categories", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Retry credit limit", exact: true }),
   ).toBeVisible();

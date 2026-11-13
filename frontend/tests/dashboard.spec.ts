@@ -7,7 +7,9 @@ for (const width of [375, 768, 1440, 1920])
     await expect(
       page.getByRole("heading", { name: "Balance History" }),
     ).toBeVisible();
-    await expect(page.getByLabel("Explore category")).toBeVisible();
+    await expect(
+      page.getByRole("group", { name: "Spending categories", exact: true }),
+    ).toBeVisible();
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
@@ -32,18 +34,21 @@ test("history selection leaves current-month figures unchanged", async ({
   await expect(
     page.getByRole("heading", { name: "Balance History" }),
   ).toBeVisible();
-  await expect(page.getByLabel("Explore category")).toBeVisible();
+  await expect(
+    page.getByRole("group", { name: "Spending categories", exact: true }),
+  ).toBeVisible();
   const monthly = await page.locator(".net-card").textContent();
   await page.getByRole("button", { name: "All", exact: true }).click();
   await expect(page.locator(".net-card")).toHaveText(monthly!);
-  await page.getByLabel("Explore category").selectOption("credit");
+  await page.getByRole("button", { name: /^Groceries,/ }).focus();
+  await page.keyboard.press("Enter");
   await expect(
     page.getByRole("button", { name: "Custom", exact: true }),
   ).toHaveCount(0);
   await expect(
     page.getByRole("button", { name: "1M", exact: true }),
   ).toBeVisible();
-  await expect(page.locator(".donut-label")).toContainText("Credit");
+  await expect(page.locator(".spending-center")).toContainText("Groceries");
 });
 test("transaction filters and persistent categorization preserve bank values", async ({
   page,
@@ -118,7 +123,9 @@ test("history errors and retries are isolated and retain the actual old interval
   context,
 }) => {
   await page.goto("/");
-  await expect(page.getByLabel("Explore category")).toBeVisible();
+  await expect(
+    page.getByRole("group", { name: "Spending categories", exact: true }),
+  ).toBeVisible();
   const monthly = await page.locator(".net-card").textContent();
   const oldPeriod = await page.locator(".range-label").textContent();
   await context.setOffline(true);
@@ -147,7 +154,9 @@ test("malformed credit value fails independently and never becomes zero", async 
     localStorage.setItem("capital-demo-credit-limit", "broken"),
   );
   await page.goto("/");
-  await expect(page.getByLabel("Explore category")).toBeVisible();
+  await expect(
+    page.getByRole("group", { name: "Spending categories", exact: true }),
+  ).toBeVisible();
   await expect(
     page.getByRole("button", { name: "Retry credit limit", exact: true }),
   ).toBeVisible();

@@ -1,13 +1,10 @@
-import { useState, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import {
   Area,
   AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
-  Cell,
-  Pie,
-  PieChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -15,19 +12,11 @@ import {
 } from "recharts";
 import type {
   BalanceHistoryResponse,
-  SpendingView,
   MonthlyCashflowResponse,
 } from "./contracts";
 import { money, monthLabel, shortDate, bankTimestamp } from "./format";
 import { dayNumber, dayString, DAY_MS } from "./balanceHistory";
-const colors = [
-  "#6eb594",
-  "#b17a38",
-  "#567a9b",
-  "#8c6596",
-  "#8a7736",
-  "#677773",
-];
+export { SpendingChart } from "./SpendingChart";
 export function HistoryChart({
   data,
   historyControls,
@@ -132,93 +121,6 @@ export function HistoryChart({
             </AreaChart>
           </ResponsiveContainer>
         </div>
-      )}
-    </section>
-  );
-}
-export function SpendingChart({ data }: { data: SpendingView }) {
-  const [activeCategory, setActiveCategory] = useState<string | null>(null);
-  const selected = data.categories.find((c) => c.id === activeCategory);
-  return (
-    <section className="panel breakdown">
-      <div className="panel-heading">
-        <div>
-          <span className="eyebrow">
-            {shortDate(data.from)} – {shortDate(data.to)} · MONTH TO DATE
-          </span>
-          <h2>Spending by Category</h2>
-        </div>
-        <span className="unit">UAH</span>
-      </div>
-      {data.totalMinor === null || data.coverage === "unavailable" ? (
-        <div className="empty">Spending data unavailable.</div>
-      ) : data.categories.length ? (
-        <>
-          <div className="donut-wrap">
-            <div className="donut">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={data.categories}
-                    dataKey="amountMinor"
-                    nameKey="label"
-                    innerRadius="72%"
-                    outerRadius="94%"
-                    paddingAngle={3}
-                    stroke="none"
-                    onClick={(_, index) =>
-                      setActiveCategory(
-                        data.categories[index].id === activeCategory
-                          ? null
-                          : data.categories[index].id,
-                      )
-                    }
-                    isAnimationActive={false}
-                  >
-                    {data.categories.map((c, i) => (
-                      <Cell
-                        key={c.id}
-                        fill={colors[i % colors.length]}
-                        opacity={selected && selected.id !== c.id ? 0.35 : 1}
-                      />
-                    ))}
-                  </Pie>
-                  <Tooltip formatter={(v) => money(Number(v))} />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-            <div className="donut-label" aria-live="polite">
-              <span>{selected ? selected.label : "Total spending"}</span>
-              {selected && (
-                <small>
-                  {Math.round(
-                    (selected.amountMinor / (data.totalMinor || 1)) * 100,
-                  )}
-                  % of monthly spending
-                </small>
-              )}
-              <strong>
-                {money(selected ? selected.amountMinor : data.totalMinor)}
-              </strong>
-            </div>
-          </div>
-          <label className="category-picker">
-            Explore category
-            <select
-              value={activeCategory || ""}
-              onChange={(e) => setActiveCategory(e.target.value || null)}
-            >
-              <option value="">Total spending</option>
-              {data.categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </>
-      ) : (
-        <div className="empty">No spending this month.</div>
       )}
     </section>
   );

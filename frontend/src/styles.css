@@ -1881,3 +1881,141 @@ summary:focus-visible {
 .credit-uncertain {
   margin-block: 16px;
 }
+/* Designer-approved category palette; isolated donut presentation. */
+.spending-panel {
+  min-width: 0;
+}
+.spending-panel .panel-heading {
+  align-items: center;
+  gap: 12px;
+}
+.spending-demo {
+  color: #a5b4ae;
+  font-size: 11px;
+  margin: 10px 0 0;
+}
+.spending-ring-wrap {
+  position: relative;
+  width: min(100%, 300px);
+  margin: 12px auto 20px;
+  aspect-ratio: 1;
+}
+.spending-ring {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.spending-ring path,
+.spending-ring circle {
+  cursor: pointer;
+}
+.spending-center {
+  position: absolute;
+  inset: 25%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 8px;
+  pointer-events: none;
+}
+.spending-center span {
+  color: #bac6c0;
+  font-size: 12px;
+  line-height: 1.4;
+}
+.spending-center strong {
+  font-size: clamp(17px, 1.5vw, 24px);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  width: max-content;
+  flex-shrink: 0;
+  line-height: 1.2;
+}
+.spending-center small {
+  color: #a5b4ae;
+  font-size: 11px;
+}
+.spending-info {
+  border: 0;
+  background: transparent;
+  color: #bac6c0;
+  cursor: pointer;
+  padding: 5px;
+  min-width: 28px;
+  min-height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+.spending-info:hover {
+  background: #35443b;
+  color: #fff;
+}
+.spending-category:focus-visible,
+.spending-info:focus-visible {
+  outline: 2px solid #e8efeb;
+  outline-offset: 2px;
+}
+.spending-explanation {
+  position: fixed;
+  z-index: 100;
+  width: 300px;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100dvh - 16px);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid #63786b;
+  border-radius: 10px;
+  padding: 14px;
+  background: #26332c;
+  box-shadow: 0 8px 30px #0006;
+  color: #e8efeb;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.spending-explanation-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.spending-explanation-body {
+  overflow-y: auto;
+  min-height: 0;
+  overflow-wrap: anywhere;
+}
+.spending-explanation-body p {
+  margin: 10px 0 0;
+}
+.spending-explanation-value {
+  font-variant-numeric: tabular-nums;
+  color: #d6e6dc;
+}
+/* Direct segment interaction; no legend or selector below the donut. */
+.spending-ring [role="button"]:focus-visible {
+  outline: none;
+  stroke: #fff;
+  stroke-width: 4px;
+}
+.spending-popover-breakdown {
+  list-style: none;
+  padding: 0;
+  margin: 14px 0 0;
+}
+.spending-popover-breakdown li {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 0;
+  border-top: 1px solid #52675a;
+}
+.spending-popover-breakdown li span:last-child {
+  font-size: 12px;
+  color: #bac6c0;
+}

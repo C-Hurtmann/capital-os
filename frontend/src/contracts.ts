@@ -93,7 +93,7 @@ export interface BalanceHistoryResponse {
 }
 export interface SpendingView extends PeriodMeta {
   totalMinor: number | null;
-  categories: Dashboard["categories"];
+  categories: { id: string; amountMinor: number }[];
 }
 /** Approved GET /api/v1/cashflow/monthly. */
 export interface MonthlyCashflowResponse {

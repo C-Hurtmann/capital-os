@@ -1,3 +1,4 @@
+import { demoSpendingCategories } from "./spending";
 /** Synthetic service boundary. Calendar choices below are fixtures, not production rules. */
 import { aggregate, DEMO_TODAY } from "./data";
 import type {
@@ -63,12 +64,22 @@ export const loadCashflow = (signal: AbortSignal): Promise<CashflowResponse> =>
       });
 export const loadSpending = (signal: AbortSignal): Promise<SpendingView> =>
   mock(signal, () => {
-    const d = aggregate(currentQuery);
-    return {
-      ...meta(currentQuery.from),
-      totalMinor: d.overview.expenseMinor,
-      categories: d.categories,
-    };
+    // Display-only fixture distribution, not a bank MCC mapping. Keep the
+    // demo expense total consistent with the existing current-month fixture.
+    const totalMinor = aggregate(currentQuery).overview.expenseMinor;
+    const weight = demoSpendingCategories.reduce(
+      (sum, c) => sum + BigInt(c.amountMinor),
+      0n,
+    );
+    const categories = demoSpendingCategories.map((c) => ({
+      id: c.id,
+      amountMinor: Number(
+        (BigInt(totalMinor) * BigInt(c.amountMinor)) / weight,
+      ),
+    }));
+    categories[0].amountMinor +=
+      totalMinor - categories.reduce((sum, c) => sum + c.amountMinor, 0);
+    return { ...meta(currentQuery.from), totalMinor, categories };
   });
 export const loadMonthly = (
   signal: AbortSignal,

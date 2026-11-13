@@ -93,3 +93,15 @@ Local API mode reads `/api/v1/balance-history?preset=3M` by default. Presets 1M/
 A single in-memory response supports covered narrower presets; canonical All also supports a leading-unknown fixed view. Cache is scoped to this mounted frontend/source, not persisted. Explicit Reload/Retry clears reusable data before fetching. Changed Kyiv date prevents reuse. Aborted responses cannot repopulate it. `capital-transactions-synced` invalidates history and reloads when enabled; this is an integration seam, not an implemented bank-sync notification transport. TTL/source freshness and cross-widget synchronization remain separate decisions. Authentication/logout integration remains separate; the cache must be cleared or its owner unmounted when that is added.
 
 Verified: 158 unit tests and 43 browser tests. Real browser GET through Vite/FastAPI: 3M 2026-09-01..2026-11-12 (73 points), All 2025-01-01..2026-11-12 (681 points). All points matched a direct backend GET; All/3M overlap matched, tooltip matched its selected API point, All->3M reused the response without another GET. No bank synchronization or data writes.
+
+### Spending donut mock review — 13 November 2026
+
+The donut uses the designer-approved 39-category English display catalogue and ID-keyed palette in `src/categoryCatalogue.ts`. Static descriptions live in the frontend; this is not an MCC mapping or a new API contract. `loadSpending` supplies a synthetic category distribution scaled with integer arithmetic to the existing demo monthly expense total. In local-api mode the category widget remains explicitly labelled Demo data and does not represent real bank transactions.
+
+`src/spending.ts` validates totals and groups strictly below 3% (at least two eligible categories, except 1–3 positive categories), caps at eight sectors and always places synthetic Others last. Source `other` remains Uncategorized. Exact BigInt arithmetic is used for grouping and rounded percentage display; SVG geometry alone uses floating-point ratios. All members remain available in the expandable legend.
+
+`src/SpendingChart.tsx` provides keyboard/touch selection, independent information buttons, hover/focus explanations and pinned popovers with Escape/outside-click handling. Popovers do not change layout, and may scroll at constrained viewport heights. Real category API integration and the backend MCC mapping remain separate work.
+
+Donut review correction: the visible bottom legend was removed at the user's request. A compact category selector includes grouped categories under Inside Others; the Others information popover shows the breakdown without changing card height. The neighbouring monthly chart does not stretch to match the donut. This supersedes the expandable inline legend described above.
+
+Final demo approval: the user approved removing both the legend and the entire Explore category block. Categories are accessed directly through donut sectors (pointer, touch, Tab + Enter/Space); Others opens its breakdown in an overlay. This supersedes the compact selector proposal above. No financial API or MCC mapping approval is implied.
