@@ -15,6 +15,7 @@ import {
   loadCashflow,
   loadMonthly,
   loadSpending,
+  liveSpending,
   liveCredit,
   liveBalance,
   liveCashflow,
@@ -42,14 +43,14 @@ export default function App() {
     [editing, setEditing] = useState(false);
   const balance = useWidget(loadBalance, page === "dashboard");
   const cashflow = useWidget(loadCashflow, page === "dashboard");
-  const spending = useWidget(loadSpending);
+  const spending = useWidget(loadSpending, page === "dashboard");
   const monthly = useWidget(loadMonthly, page === "dashboard");
   const history = useBalanceHistory(preset, page === "dashboard");
   const credit = useCreditLimit(page === "dashboard");
   const reloadSpending = spending.reload;
   useEffect(() => {
     const change = () => {
-      void reloadSpending();
+      if (!liveSpending) void reloadSpending();
     };
     window.addEventListener("capital-category-change", change);
     return () => window.removeEventListener("capital-category-change", change);
@@ -198,7 +199,7 @@ export default function App() {
             <div className="sync-status" role="status">
               <span className="status-dot" />
               {liveBalance
-                ? "Balance and cashflow from local backend · Categories use demo data · Reload does not sync with Monobank"
+                ? `Balance and cashflow from local backend · Categories ${liveSpending ? "from local backend" : "use demo data"} · Reload does not sync with Monobank`
                 : sync === "error"
                   ? "Refresh failed. Your previously loaded data is still available."
                   : sync === "loading"
@@ -409,7 +410,10 @@ export default function App() {
                         </section>
                       }
                     >
-                      <SpendingChart data={spending.data} />
+                      <SpendingChart
+                        data={spending.data}
+                        demo={!liveSpending}
+                      />
                     </Suspense>
                   ) : (
                     <section className="panel breakdown">

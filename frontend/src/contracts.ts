@@ -91,8 +91,14 @@ export interface BalanceHistoryResponse {
   currency: "UAH";
   points: { date: string; balanceMinor: number | null }[];
 }
-export interface SpendingView extends PeriodMeta {
-  totalMinor: number | null;
+/** Approved GET /api/v1/spending/categories v0.3. */
+export interface SpendingResponse {
+  from: string;
+  to: string;
+  computedAt: string;
+  timeZone: "Europe/Kyiv";
+  currency: "UAH";
+  totalMinor: number;
   categories: { id: string; amountMinor: number }[];
 }
 /** Approved GET /api/v1/cashflow/monthly. */

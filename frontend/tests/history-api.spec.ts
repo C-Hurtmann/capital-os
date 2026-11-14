@@ -1,3 +1,4 @@
+import { spendingFixture } from "./spendingFixture";
 import { test, expect, type Route } from "@playwright/test";
 import { historyFixture } from "./historyFixture";
 import { monthlyFixture } from "./monthlyFixture";
@@ -168,4 +169,10 @@ test("old wide request cannot reappear after invalidation", async ({
   await expect(page.locator(".range-label")).toContainText("1 Sept");
   await old!.fulfill({ json: historyFixture("All") }).catch(() => {});
   await expect(page.locator(".range-label")).toContainText("1 Sept");
+});
+
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/v1/spending/categories", (r) =>
+    r.fulfill({ json: spendingFixture }),
+  );
 });

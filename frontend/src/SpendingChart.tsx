@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, useId } from "react";
 import { createPortal } from "react-dom";
 import { Info, X } from "lucide-react";
-import type { SpendingView } from "./contracts";
+import type { SpendingResponse } from "./contracts";
 import { categoryCatalogue } from "./categoryCatalogue";
 import {
   chartHelp,
@@ -11,7 +11,7 @@ import {
   spendingPercent,
   type SpendingSector,
 } from "./spending";
-import { money, shortDate } from "./format";
+import { money, shortDate, bankTimestamp } from "./format";
 
 /** Fit the formatted amount to the donut hole without rounding or truncation. */
 function DonutAmount({ amountMinor }: { amountMinor: number }) {
@@ -199,16 +199,22 @@ function ExplanationPanel({
   );
 }
 
-export function SpendingChart({ data }: { data: SpendingView }) {
+export function SpendingChart({
+  data,
+  demo = false,
+}: {
+  data: SpendingResponse;
+  demo?: boolean;
+}) {
   const [selected, setSelected] = useState<string | null>(null);
   const [explanation, setExplanation] = useState<Explanation | null>(null);
   const card = useRef<HTMLElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const suppressFocus = useRef(false);
   const panelId = useId();
-  const total = data.totalMinor ?? 0;
+  const total = data.totalMinor;
   let sectors: SpendingSector[] = [];
-  let invalid = data.totalMinor === null || data.coverage === "unavailable";
+  let invalid = false;
   try {
     if (!invalid) sectors = groupSpending(data.categories, total);
   } catch {
@@ -322,7 +328,18 @@ export function SpendingChart({ data }: { data: SpendingView }) {
         </div>
         {infoButton("chart-help")}
       </div>
-      <p className="spending-demo">Demo data · UAH</p>
+      <p className="spending-demo">
+        {demo ? (
+          "Demo data · UAH"
+        ) : (
+          <>
+            UAH · Calculated{" "}
+            <time dateTime={data.computedAt}>
+              {bankTimestamp(data.computedAt)}
+            </time>
+          </>
+        )}
+      </p>
       {invalid ? (
         <div className="empty" role="status">
           Spending data unavailable. Category totals could not be verified.

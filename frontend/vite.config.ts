@@ -9,6 +9,9 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react()],
     define: {
+      "import.meta.env.VITE_SPENDING_SOURCE": JSON.stringify(
+        mode === "local-api" ? "api" : env.VITE_SPENDING_SOURCE || "demo",
+      ),
       "import.meta.env.VITE_HISTORY_SOURCE": JSON.stringify(
         mode === "local-api" ? "api" : env.VITE_HISTORY_SOURCE || "demo",
       ),

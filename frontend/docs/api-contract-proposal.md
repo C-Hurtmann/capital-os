@@ -69,3 +69,13 @@ Verification: 126 unit tests, full 38-browser-test suite, lint/build passed. Rea
 ## Balance History — approved contract / local integration 12 November 2026
 
 Canonical contract https://trello.com/c/1ztR5mCl; frontend task https://trello.com/c/H70rFe18. GET /api/v1/balance-history accepts case-sensitive preset 1M/3M/6M/12M/All, omitted default 3M. Response contains only from/to/computedAt/timeZone/currency/points; from null only for empty All. Calendar presets, leading sentinel, dense carry-forward after first known date and uncapped All supersede the earlier provisional history DTO/default sections above. Backend owns daily balances. Frontend parses and slices returned points without financial reconstruction. Calculation cutoff is not bank freshness. Numeric time-aware X-axis and independent resource state are integrated; advanced cache/freshness coordination remains separate.
+
+## Spending GET v0.3 — integrated 14 November 2026
+
+Approved contract: https://trello.com/c/Xnrrfzjc. Frontend integration: https://trello.com/c/PVsFl2vp.
+
+`GET /api/v1/spending/categories` returns required non-null `from`, `to`, `computedAt`, `timeZone: "Europe/Kyiv"`, `currency: "UAH"`, `totalMinor`, and `categories: [{id, amountMinor}]`. No query or body. Cutoff is fixed at the start of server calculation; dates describe the Kyiv current month through the partial cutoff day. `computedAt` does not indicate bank synchronization freshness.
+
+Only agreed real category IDs are accepted, once each. Category amounts are positive safe integers, total is a nonnegative safe integer equal to their exact sum. Zero total means an empty array. Ordering is descending amount, ascending ID for ties. Unknown IDs, invalid metadata, duplicate IDs, unsafe amounts and mismatched totals reject the response as a whole; an existing valid widget result remains intact with its original metadata.
+
+Backend owns MCC mapping/aggregation. Frontend owns approved labels/descriptions/colors and synthetic Others; no backend label/coverage/percent fields or separate categories endpoint are required. The current approved UI has no bottom legend or Explore category. These rules replace any provisional spending DTO or UI examples earlier in this document.

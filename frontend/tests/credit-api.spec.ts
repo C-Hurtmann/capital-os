@@ -1,3 +1,4 @@
+import { spendingFixture } from "./spendingFixture";
 import { historyFixture } from "./historyFixture";
 import { monthlyFixture } from "./monthlyFixture";
 import { test, expect } from "@playwright/test";
@@ -124,5 +125,11 @@ test.beforeEach(async ({ page }) => {
         new URL(r.request().url()).searchParams.get("preset") || "3M",
       ),
     }),
+  );
+});
+
+test.beforeEach(async ({ page }) => {
+  await page.route("**/api/v1/spending/categories", (r) =>
+    r.fulfill({ json: spendingFixture }),
   );
 });

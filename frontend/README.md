@@ -105,3 +105,13 @@ The donut uses the designer-approved 39-category English display catalogue and I
 Donut review correction: the visible bottom legend was removed at the user's request. A compact category selector includes grouped categories under Inside Others; the Others information popover shows the breakdown without changing card height. The neighbouring monthly chart does not stretch to match the donut. This supersedes the expandable inline legend described above.
 
 Final demo approval: the user approved removing both the legend and the entire Explore category block. Categories are accessed directly through donut sectors (pointer, touch, Tab + Enter/Space); Others opens its breakdown in an overlay. This supersedes the compact selector proposal above. No financial API or MCC mapping approval is implied.
+
+### Real Spending GET integration — 14 November 2026
+
+`local-api` now loads `GET /api/v1/spending/categories` through the existing `/api` Vite proxy (no query/body). `VITE_SPENDING_SOURCE=api` enables this resource separately; demo remains the default outside local-api. `SpendingResponse` is the approved v0.3 DTO, independent of the former mock coverage model.
+
+`src/spendingApi.ts` validates required values, UTC cutoff / Kyiv month dates, literal currency/timezone, the approved 39 IDs, uniqueness, positive safe amounts, ordering and exact BigInt total before updating state. Unknown API IDs fail this widget; they are never remapped to Uncategorized. The backend owns MCC classification; frontend copy, palette and Others grouping remain unchanged.
+
+The existing `useWidget` handles independent loading, retry, stale resource retention and aborted/late responses. Requests are enabled on Dashboard only; demo category-edit events do not reload the live resource. Old metadata stays with old data after errors, including month rollover. Retry reads stored transactions and never invokes bank sync. The card displays its server calculation cutoff, not bank freshness. No legend, Explore category or new financial calculations were introduced.
+
+Verification: 249 unit tests and 51 browser tests passed; build and lint passed. Read-only local smoke through the Vite proxy/FastAPI rendered 14 real categories as 8 sectors. A separate read-only process froze both service clocks at `2026-11-14T15:48:16.712Z` against DynamoDB Local: spending total = exact category sum = cashflow expenses = 4,384,238 kopecks. No persisted bank data was changed. Production authentication and deployment remain outside this local integration.

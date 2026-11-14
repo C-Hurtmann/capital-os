@@ -1,3 +1,5 @@
+import { getSpending } from "./spendingApi";
+export const liveSpending = import.meta.env.VITE_SPENDING_SOURCE === "api";
 import { demoSpendingCategories } from "./spending";
 /** Synthetic service boundary. Calendar choices below are fixtures, not production rules. */
 import { aggregate, DEMO_TODAY } from "./data";
@@ -7,7 +9,7 @@ import type {
   HistoryPreset,
   BalanceHistoryResponse,
   MonthlyCashflowResponse,
-  SpendingView,
+  SpendingResponse,
   CreditLimitResponse,
 } from "./contracts";
 import { parseCreditLimit, getCreditLimit } from "./creditLimit";
@@ -62,25 +64,40 @@ export const loadCashflow = (signal: AbortSignal): Promise<CashflowResponse> =>
           netMinor: o.incomeMinor - o.expenseMinor,
         };
       });
-export const loadSpending = (signal: AbortSignal): Promise<SpendingView> =>
-  mock(signal, () => {
-    // Display-only fixture distribution, not a bank MCC mapping. Keep the
-    // demo expense total consistent with the existing current-month fixture.
-    const totalMinor = aggregate(currentQuery).overview.expenseMinor;
-    const weight = demoSpendingCategories.reduce(
-      (sum, c) => sum + BigInt(c.amountMinor),
-      0n,
-    );
-    const categories = demoSpendingCategories.map((c) => ({
-      id: c.id,
-      amountMinor: Number(
-        (BigInt(totalMinor) * BigInt(c.amountMinor)) / weight,
-      ),
-    }));
-    categories[0].amountMinor +=
-      totalMinor - categories.reduce((sum, c) => sum + c.amountMinor, 0);
-    return { ...meta(currentQuery.from), totalMinor, categories };
-  });
+export const loadSpending = (signal: AbortSignal): Promise<SpendingResponse> =>
+  liveSpending
+    ? getSpending(signal)
+    : mock(signal, () => {
+        // Display-only fixture distribution, not a bank MCC mapping. Keep the
+        // demo expense total consistent with the existing current-month fixture.
+        const totalMinor = aggregate(currentQuery).overview.expenseMinor;
+        const weight = demoSpendingCategories.reduce(
+          (sum, c) => sum + BigInt(c.amountMinor),
+          0n,
+        );
+        const categories = demoSpendingCategories.map((c) => ({
+          id: c.id,
+          amountMinor: Number(
+            (BigInt(totalMinor) * BigInt(c.amountMinor)) / weight,
+          ),
+        }));
+        categories[0].amountMinor +=
+          totalMinor - categories.reduce((sum, c) => sum + c.amountMinor, 0);
+        return {
+          from: currentQuery.from,
+          to: currentQuery.to,
+          computedAt: meta(currentQuery.from).asOf,
+          currency: "UAH",
+          timeZone: "Europe/Kyiv",
+          totalMinor,
+          categories: categories
+            .filter((c) => c.amountMinor > 0)
+            .sort(
+              (a, b) =>
+                b.amountMinor - a.amountMinor || a.id.localeCompare(b.id),
+            ),
+        };
+      });
 export const loadMonthly = (
   signal: AbortSignal,
 ): Promise<MonthlyCashflowResponse> =>
