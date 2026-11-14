@@ -15,6 +15,7 @@ from app.api.balance_history import router as balance_history_router
 from app.api.cashflow import router as cashflow_router
 from app.api.credit_limit import router as credit_limit_router
 from app.api.health import router as health_router
+from app.api.spending import router as spending_router
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,7 @@ app.include_router(credit_limit_router)
 app.include_router(balance_router)
 app.include_router(balance_history_router)
 app.include_router(cashflow_router)
+app.include_router(spending_router)
 
 
 @app.exception_handler(Exception)
