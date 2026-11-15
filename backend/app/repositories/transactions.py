@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
@@ -86,6 +87,51 @@ class TransactionRepository(BaseRepository):
 
         items = response["Items"]
         return self._to_transaction(items[0]) if items else None
+
+    def query_cursor_batch(
+        self, from_ms: int, to_exclusive_ms: int, position: str | None = None
+    ) -> tuple[list[tuple[Transaction, str]], str | None]:
+        if from_ms < 0 or from_ms >= to_exclusive_ms:
+            raise ValueError("Invalid transaction range")
+
+        account_pk = f"ACCOUNT#{ACCOUNT_ID_PLACEHOLDER}"
+
+        params: QueryInputTypeDef = {
+            "TableName": self.table_name,
+            "KeyConditionExpression": ("PK = :pk AND SK BETWEEN :start AND :end"),
+            "ExpressionAttributeValues": {
+                ":pk": {"S": account_pk},
+                ":start": {"S": f"TX#{from_ms:013d}"},
+                ":end": {"S": f"TX#{to_exclusive_ms:013d}"},
+            },
+            "ScanIndexForward": False,
+            "Limit": 50,
+        }
+
+        if position is not None:
+            match = re.fullmatch(
+                r"TX#([0-9]{13})#[^\r\n]+",
+                position,
+            )
+
+            if match is None or not from_ms <= int(match.group(1)) < to_exclusive_ms:
+                raise ValueError("Invalid transaction position")
+
+            params["ExclusiveStartKey"] = {
+                "PK": {"S": account_pk},
+                "SK": {"S": position},
+            }
+
+        response = self.client.query(**params)
+
+        rows = [
+            (self._to_transaction(item), item["SK"]["S"]) for item in response["Items"]
+        ]
+
+        last_key = response.get("LastEvaluatedKey")
+        next_position = last_key["SK"]["S"] if last_key else None
+
+        return rows, next_position
 
     def insert_if_not_exists(self, transaction: Transaction) -> bool:
         occurred_at_ms = int(transaction.occurred_at.timestamp() * 1000)

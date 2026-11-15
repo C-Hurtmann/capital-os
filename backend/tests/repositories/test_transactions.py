@@ -7,6 +7,12 @@ from botocore.exceptions import ClientError
 from app.models.transaction import Transaction
 from app.repositories.transactions import TransactionRepository
 
+TIMESTAMP_MS = 1_750_000_000_000
+FROM_MS = TIMESTAMP_MS - 1_000
+TO_EXCLUSIVE_MS = TIMESTAMP_MS + 1
+
+ACCOUNT_PK = "ACCOUNT#monobank-main"
+
 
 def test_query_period_page_maps_transactions() -> None:
     item = {
@@ -364,10 +370,6 @@ def test_get_latest_before_uses_exclusive_time_boundary() -> None:
     assert params["ScanIndexForward"] is False
     assert params["Limit"] == 1
 
-    # The actual transaction key has an additional #bankId suffix.
-    # Therefore TX#1750000000000#tx-123 is greater than the upper
-    # bound TX#1750000000000 and cannot be returned.
-
 
 def test_get_latest_before_propagates_storage_error() -> None:
     client = Mock()
@@ -385,3 +387,184 @@ def test_get_latest_before_propagates_storage_error() -> None:
 
     with pytest.raises(ClientError):
         repository.get_latest_before(from_ms=1750000000000)
+
+
+def _key(bank_id: str, timestamp_ms: int = TIMESTAMP_MS) -> dict:
+    return {
+        "PK": {"S": ACCOUNT_PK},
+        "SK": {"S": f"TX#{timestamp_ms:013d}#{bank_id}"},
+    }
+
+
+def _item(bank_id: str, timestamp_ms: int = TIMESTAMP_MS) -> dict:
+    return {
+        **_key(bank_id, timestamp_ms),
+        "bankId": {"S": bank_id},
+        "occurredAtMs": {"N": str(timestamp_ms)},
+        "amountMinor": {"N": "-12500"},
+        "operationAmountMinor": {"N": "-12500"},
+        "operationCurrencyCode": {"N": "980"},
+        "balanceMinor": {"N": "150000"},
+        "mcc": {"N": "5411"},
+        "commissionMinor": {"N": "0"},
+    }
+
+
+def _repository(client: Mock) -> TransactionRepository:
+    return TransactionRepository(
+        client=client,
+        table_name="test-table",
+    )
+
+
+def test_query_returns_positions_and_continuation() -> None:
+    client = Mock()
+    client.query.return_value = {
+        "Items": [_item("z"), _item("m")],
+        "LastEvaluatedKey": _key("m"),
+    }
+
+    rows, next_position = _repository(client).query_cursor_batch(
+        from_ms=FROM_MS,
+        to_exclusive_ms=TO_EXCLUSIVE_MS,
+    )
+
+    assert [tx.bank_id for tx, _ in rows] == ["z", "m"]
+    assert [position for _, position in rows] == [
+        _key("z")["SK"]["S"],
+        _key("m")["SK"]["S"],
+    ]
+    assert next_position == _key("m")["SK"]["S"]
+
+    params = client.query.call_args.kwargs
+
+    assert params["TableName"] == "test-table"
+    assert params["ScanIndexForward"] is False
+    assert params["Limit"] == 50
+    assert "ExclusiveStartKey" not in params
+
+    assert params["ExpressionAttributeValues"] == {
+        ":pk": {"S": ACCOUNT_PK},
+        ":start": {"S": f"TX#{FROM_MS:013d}"},
+        ":end": {"S": f"TX#{TO_EXCLUSIVE_MS:013d}"},
+    }
+
+
+def test_resumes_after_last_examined_transaction() -> None:
+    client = Mock()
+    client.query.side_effect = [
+        {
+            "Items": [
+                _item("z"),
+                _item("m"),
+                _item("a"),
+            ],
+        },
+        {
+            "Items": [
+                _item("m"),
+                _item("a"),
+            ],
+        },
+    ]
+
+    repository = _repository(client)
+
+    first_rows, first_continuation = repository.query_cursor_batch(
+        from_ms=FROM_MS,
+        to_exclusive_ms=TO_EXCLUSIVE_MS,
+    )
+
+    assert first_continuation is None
+
+    # The service stops after examining only the first record.
+    examined_position = first_rows[0][1]
+
+    second_rows, _ = repository.query_cursor_batch(
+        from_ms=FROM_MS,
+        to_exclusive_ms=TO_EXCLUSIVE_MS,
+        position=examined_position,
+    )
+
+    assert [tx.bank_id for tx, _ in second_rows] == ["m", "a"]
+
+    second_call = client.query.call_args_list[1].kwargs
+    assert second_call["ExclusiveStartKey"] == _key("z")
+
+
+def test_empty_result_has_no_continuation() -> None:
+    client = Mock()
+    client.query.return_value = {"Items": []}
+
+    rows, next_position = _repository(client).query_cursor_batch(
+        from_ms=FROM_MS,
+        to_exclusive_ms=TO_EXCLUSIVE_MS,
+    )
+
+    assert rows == []
+    assert next_position is None
+
+
+@pytest.mark.parametrize(
+    ("from_ms", "to_exclusive_ms"),
+    [
+        (TIMESTAMP_MS, TIMESTAMP_MS),
+        (TIMESTAMP_MS + 1, TIMESTAMP_MS),
+        (-1, TIMESTAMP_MS),
+    ],
+)
+def test_rejects_invalid_range(
+    from_ms: int,
+    to_exclusive_ms: int,
+) -> None:
+    client = Mock()
+
+    with pytest.raises(ValueError):
+        _repository(client).query_cursor_batch(
+            from_ms=from_ms,
+            to_exclusive_ms=to_exclusive_ms,
+        )
+
+    client.query.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    "position",
+    [
+        "",
+        "invalid-position",
+        f"TX#{TIMESTAMP_MS:013d}#",
+        f"TX#{TIMESTAMP_MS + 1:013d}#tx",
+        f"TX#{FROM_MS - 1:013d}#tx",
+    ],
+)
+def test_rejects_invalid_position(position: str) -> None:
+    client = Mock()
+
+    with pytest.raises(ValueError):
+        _repository(client).query_cursor_batch(
+            from_ms=FROM_MS,
+            to_exclusive_ms=TO_EXCLUSIVE_MS,
+            position=position,
+        )
+
+    client.query.assert_not_called()
+
+
+def test_propagates_storage_failure() -> None:
+    client = Mock()
+    client.query.side_effect = ClientError(
+        {
+            "Error": {
+                "Code": "ProvisionedThroughputExceededException",
+                "Message": "Throttled",
+            }
+        },
+        "Query",
+    )
+
+    with pytest.raises(ClientError):
+        _repository(client).query_cursor_batch(
+            from_ms=FROM_MS,
+            to_exclusive_ms=TO_EXCLUSIVE_MS,
+        )
