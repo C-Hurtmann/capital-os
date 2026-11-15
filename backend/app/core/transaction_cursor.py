@@ -1,8 +1,12 @@
 from hashlib import sha256
+from typing import Annotated, Self
 
+from fastapi import Depends
 from itsdangerous import BadData, URLSafeSerializer
 from pydantic import ValidationError
 
+from app.constants import ACCOUNT_ID_PLACEHOLDER
+from app.core.settings import Settings
 from app.schemas.transactions import CursorPayload
 
 MAX_CURSOR_LENGTH = 4096
@@ -53,3 +57,16 @@ class TransactionCursorCodec:
             raise InvalidCursorError("Invalid cursor")
 
         return payload
+
+    @classmethod
+    def get_codec(
+        cls,
+        settings: Annotated[
+            Settings,
+            Depends(Settings.settings_cached),
+        ],
+    ) -> Self:
+        return cls(
+            secret=settings.cursor_secret.get_secret_value(),
+            account_id=ACCOUNT_ID_PLACEHOLDER,
+        )

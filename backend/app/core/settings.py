@@ -14,6 +14,8 @@ class Settings(BaseSettings):
     # Temp
     monobank_api_token: SecretStr
     monobank_account_id: str
+    # Transactions
+    cursor_secret: SecretStr
 
     model_config = SettingsConfigDict(
         env_file=BACKEND_DIR / ".env", env_file_encoding="utf-8"

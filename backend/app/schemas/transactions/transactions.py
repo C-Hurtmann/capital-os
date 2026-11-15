@@ -7,6 +7,7 @@ from pydantic import (
     BaseModel,
     ConfigDict,
     Field,
+    computed_field,
     model_validator,
 )
 
@@ -21,9 +22,13 @@ class TransactionItemResponse(BaseModel):
         from_attributes=True,
     )
 
-    bank_id: str = Field(min_length=1, serialization_alias="bankId")
-    occurred_at: AwareDatetime = Field(serialization_alias="occurredAt")
-
+    bank_id: str = Field(
+        min_length=1,
+        serialization_alias="bankId",
+    )
+    occurred_at: AwareDatetime = Field(
+        serialization_alias="occurredAt",
+    )
     amount_minor: int = Field(
         ge=-MAX_SAFE_INTEGER,
         le=MAX_SAFE_INTEGER,
@@ -50,23 +55,22 @@ class TransactionItemResponse(BaseModel):
         le=MAX_SAFE_INTEGER,
         serialization_alias="commissionMinor",
     )
-    category_id: str | None = Field(serialization_alias="categoryId")
+
+    @computed_field(alias="categoryId")
+    @property
+    def category_id(self) -> str | None:
+        if self.amount_minor >= 0:
+            return None
+
+        return mcc_to_category_id(self.mcc)
 
     @model_validator(mode="after")
-    def validate_transaction(self) -> Self:
+    def validate_timestamp(self) -> Self:
         if self.occurred_at.utcoffset() != timedelta(0):
             raise ValueError("occurredAt must be UTC")
 
         if self.occurred_at.microsecond % 1000:
             raise ValueError("occurredAt must have millisecond precision")
-
-        if self.amount_minor < 0:
-            expected_category = mcc_to_category_id(self.mcc)
-
-            if self.category_id != expected_category:
-                raise ValueError("Transaction category does not match MCC")
-        elif self.category_id is not None:
-            raise ValueError("Only expenses can have a categoryId")
 
         return self
 
@@ -78,14 +82,18 @@ class TransactionsResponse(BaseModel):
         from_attributes=True,
     )
 
-    computed_at: AwareDatetime = Field(serialization_alias="computedAt")
+    computed_at: AwareDatetime = Field(
+        serialization_alias="computedAt",
+    )
     time_zone: Literal["Europe/Kyiv"] = Field(
         default="Europe/Kyiv",
         serialization_alias="timeZone",
     )
     currency: Literal["UAH"] = "UAH"
 
-    items: tuple[TransactionItemResponse, ...] = Field(max_length=50)
+    items: tuple[TransactionItemResponse, ...] = Field(
+        max_length=50,
+    )
     next_cursor: str | None = Field(
         min_length=1,
         serialization_alias="nextCursor",
@@ -109,7 +117,7 @@ class TransactionsResponse(BaseModel):
 
         keys = [(item.occurred_at, item.bank_id.encode("utf-8")) for item in self.items]
 
-        if any(previous <= current for previous, current in pairwise(keys, keys[1:])):
+        if any(previous <= current for previous, current in pairwise(keys)):
             raise ValueError("Transactions must be sorted newest first")
 
         return self
