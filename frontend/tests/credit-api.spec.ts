@@ -61,6 +61,17 @@ test("positive limit loads only on the dashboard without unnecessary requests", 
   page,
 }) => {
   let requests = 0;
+  await page.route("**/api/v1/transactions?*", (r) =>
+    r.fulfill({
+      json: {
+        computedAt: "2026-11-15T12:00:00Z",
+        timeZone: "Europe/Kyiv",
+        currency: "UAH",
+        items: [],
+        nextCursor: null,
+      },
+    }),
+  );
   await page.route("**/api/v1/credit-limit", async (route) => {
     requests++;
     expect(route.request().method()).toBe("GET");
@@ -72,9 +83,9 @@ test("positive limit loads only on the dashboard without unnecessary requests", 
   await expect(page.locator(".limit-row")).toContainText("15,000.00");
   await page.getByRole("button", { name: "Transactions", exact: true }).click();
   const before = requests;
-  await page.getByRole("button", { name: "Reload data", exact: true }).click();
+  await page.getByRole("button", { name: "Refresh list", exact: true }).click();
   await expect(
-    page.getByRole("button", { name: "Reload data", exact: true }),
+    page.getByRole("button", { name: "Refresh list", exact: true }),
   ).toBeEnabled();
   expect(requests).toBe(before);
   await page.getByRole("button", { name: "Dashboard", exact: true }).click();

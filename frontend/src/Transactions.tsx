@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { labels, transactions, effectiveCategory, saveCategory } from "./data";
 import { money, shortDate } from "./format";
+import LiveTransactions from "./LiveTransactions";
+import { liveTransactions } from "./transactionsApi";
 const empty = {
   from: "",
   to: "",
@@ -10,6 +12,9 @@ const empty = {
   direction: "",
 };
 export default function Transactions() {
+  return liveTransactions ? <LiveTransactions /> : <DemoTransactions />;
+}
+function DemoTransactions() {
   const [draft, setDraft] = useState(empty),
     [filters, setFilters] = useState(empty),
     [page, setPage] = useState(0),

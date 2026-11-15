@@ -26,6 +26,7 @@ import { useWidget } from "./useWidget";
 import WidgetStatus from "./WidgetStatus";
 import { money, shortDate, bankTimestamp } from "./format";
 import Transactions from "./Transactions";
+import { liveTransactions } from "./transactionsApi";
 const HistoryChart = lazy(() =>
   import("./Charts").then((m) => ({ default: m.HistoryChart })),
 );
@@ -164,9 +165,13 @@ export default function App() {
             </span>
             <span className="private">
               <span className="status-dot" />
-              {liveBalance
-                ? "Local API · Demo analytics"
-                : "Demo · 29 Oct 2026"}
+              {page === "transactions"
+                ? liveTransactions
+                  ? "Local API · Transactions"
+                  : "Demo · Transactions"
+                : liveBalance
+                  ? "Local API · Demo analytics"
+                  : "Demo · 29 Oct 2026"}
             </span>
           </header>
           <main id="main">
@@ -180,34 +185,40 @@ export default function App() {
                 <p>
                   {page === "dashboard"
                     ? "A clear picture of your account. Facts first."
-                    : "Explore your activity and make categories your own."}
+                    : liveTransactions
+                      ? "Explore your account activity, one transaction at a time."
+                      : "Explore your activity and make categories your own."}
                 </p>
               </div>
-              <button
-                className="refresh"
-                onClick={refresh}
-                disabled={sync === "loading"}
-              >
-                <RefreshCw size={16} />
-                {sync === "loading"
-                  ? "Refreshing…"
-                  : liveBalance
-                    ? "Reload data"
-                    : "Refresh demo"}
-              </button>
+              {page === "dashboard" && (
+                <button
+                  className="refresh"
+                  onClick={refresh}
+                  disabled={sync === "loading"}
+                >
+                  <RefreshCw size={16} />
+                  {sync === "loading"
+                    ? "Refreshing…"
+                    : liveBalance
+                      ? "Reload data"
+                      : "Refresh demo"}
+                </button>
+              )}
             </div>
-            <div className="sync-status" role="status">
-              <span className="status-dot" />
-              {liveBalance
-                ? `Balance and cashflow from local backend · Categories ${liveSpending ? "from local backend" : "use demo data"} · Reload does not sync with Monobank`
-                : sync === "error"
-                  ? "Refresh failed. Your previously loaded data is still available."
-                  : sync === "loading"
-                    ? "Refreshing synthetic data…"
-                    : lastSync
-                      ? `Demo refreshed at ${lastSync}. No bank connection.`
-                      : "Synthetic snapshot · 29 Oct 2026, 18:30 UTC · Not connected to Monobank"}
-            </div>
+            {page === "dashboard" && (
+              <div className="sync-status" role="status">
+                <span className="status-dot" />
+                {liveBalance
+                  ? `Balance and cashflow from local backend · Categories ${liveSpending ? "from local backend" : "use demo data"} · Reload does not sync with Monobank`
+                  : sync === "error"
+                    ? "Refresh failed. Your previously loaded data is still available."
+                    : sync === "loading"
+                      ? "Refreshing synthetic data…"
+                      : lastSync
+                        ? `Demo refreshed at ${lastSync}. No bank connection.`
+                        : "Synthetic snapshot · 29 Oct 2026, 18:30 UTC · Not connected to Monobank"}
+              </div>
+            )}
             {page === "transactions" ? (
               <Transactions />
             ) : (
@@ -439,13 +450,21 @@ export default function App() {
             <footer>
               <span>
                 <span className="status-dot" />
-                PRIVATE DEMO · REVIEW BUILD
+                {page === "transactions" && liveTransactions
+                  ? "LOCAL API · REVIEW BUILD"
+                  : "PRIVATE DEMO · REVIEW BUILD"}
               </span>
               <p>
-                One Monobank UAH account. Synthetic history from January 2025.
-                All positive movements are income; all negative movements are
-                expenses. No live bank connection. Design details remain open
-                for review.
+                {page === "transactions" && liveTransactions ? (
+                  "Saved Monobank transactions · UAH account. Refresh reads stored records; it does not synchronize with the bank."
+                ) : (
+                  <>
+                    One Monobank UAH account. Synthetic history from January
+                    2025. All positive movements are income; all negative
+                    movements are expenses. No live bank connection. Design
+                    details remain open for review.
+                  </>
+                )}
               </p>
             </footer>
           </main>

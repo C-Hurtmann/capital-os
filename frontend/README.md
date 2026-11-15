@@ -1,5 +1,19 @@
 # Capital OS frontend — v0.9 review build
 
+## Transactions GET — integrated 15 November 2026
+
+`npm run dev:api` connects the approved Transactions screen to `GET /api/v1/transactions` through the existing Vite proxy. `VITE_TRANSACTIONS_SOURCE=api` enables this resource independently. The ordinary demo command retains the isolated legacy synthetic list/category editor. Live mode never reads its overrides or falls back to demo records.
+
+The live screen uses only `from`, `to`, `direction`, `limit=20` and the opaque continuation cursor. Apply/Clear/Refresh replace the confirmed list, filters and cutoff only after validated success. View more appends validated pages; empty pages with continuation remain searchable by explicit user action. Errors preserve confirmed rows and retry the failed request; 422 asks for corrected filters or a fresh traversal. Requests time out after 15 seconds, cancel on unmount and prevent overlapping submissions. No bank synchronization is triggered.
+
+`src/transactionsApi.ts` owns the DTO, runtime boundary and exact BigInt currency formatting; `src/useTransactions.ts` owns screen-local state. Signed UAH amounts, known original currencies and unknown-code raw minor units preserve precision. The current display map covers UAH/USD/EUR/GBP/PLN/CZK/CHF/JPY/KWD; other codes deliberately use the honest raw fallback. Category copy comes from the shared 39-category catalogue. Income/zero classification is not applicable. Details show stored balance/commission without recomputation. Millisecond UTC timestamps accept FastAPI's trailing fractional zeros.
+
+The approved list/detail design uses a semantic table, keyboard-accessible row buttons, a nonmodal details panel, Escape/focus restoration and announced pagination status. Dashboard layout is unchanged. The transactions screen has its own Refresh list action and a truthful local API label/footer.
+
+Verification: 267 unit tests; 58 browser scenarios including the updated credit-limit navigation regression. Lint, build and formatting checks pass. Read-only local Chromium → Vite → FastAPI/DynamoDB smoke verified initial 20 rows, append with unchanged cutoff, Income filter and real details. An original USD operation (`operationAmountMinor=-849`, `amountMinor=-39036`) displayed `−8.49 USD`; a recorded nonzero commission of 5024 minor units was found. This checks the stored API fields, not a new fetch from Monobank. No financial data writes, auth implementation or production-readiness claim.
+
+To repeat the optional real smoke with frontend on 5173 and backend on 8001: `node scripts/transactions-smoke.mjs`. It performs bounded read-only pagination to find foreign-currency/commission samples and writes a screenshot under `test-results/`. Mocked browser tests use isolated Vite ports 5177/5178 and require no real bank data.
+
 English-only, Graphite / Forest, one synthetic Monobank UAH account. This is an interactive frontend proposal for review, not a production bank connection. Credit Limit GET/POST use the approved local API contract.
 
 ## Run
