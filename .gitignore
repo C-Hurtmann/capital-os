@@ -14,6 +14,7 @@ frontend/dist/
 frontend/test-results/
 frontend/playwright-report/
 *.tsbuildinfo
+**/*node-compile-cache*/
 # Backend
 backend/logs/
 # ENV
