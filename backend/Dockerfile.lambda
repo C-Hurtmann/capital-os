@@ -1,0 +1,24 @@
+FROM ghcr.io/astral-sh/uv:0.12.3 AS uv
+
+FROM public.ecr.aws/lambda/python:3.14 AS builder
+
+ENV UV_NO_INSTALLER_METADATA=1 \
+    UV_NO_PYTHON_DOWNLOADS=1
+
+WORKDIR /var/task
+
+COPY --from=uv /uv /uvx /bin/
+
+COPY pyproject.toml uv.lock ./
+
+RUN uv export --locked --no-dev --no-emit-project \
+      -o /tmp/requirements.txt && \
+    uv pip install \
+      --target /var/task \
+      --no-cache \
+      -r /tmp/requirements.txt
+
+FROM public.ecr.aws/lambda/python:3.14
+
+COPY --from=builder /var/task/ /var/task/
+COPY app/ /var/task/app/
