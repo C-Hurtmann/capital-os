@@ -1,5 +1,5 @@
 resource "aws_ecr_repository" "backend" {
-  name                 = "${local.name_prefix}-backend"
+  name                 = "${local.stack_id}-backend"
   image_tag_mutability = "IMMUTABLE"
   force_delete         = false
 

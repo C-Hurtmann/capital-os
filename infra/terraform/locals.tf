@@ -1,4 +1,4 @@
 locals {
-  name_prefix = "capital-os"
+  stack_id = "capital-os"
 }
 
