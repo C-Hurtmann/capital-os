@@ -24,7 +24,7 @@ resource "aws_iam_role" "github_actions_deploy" {
   name = "${local.stack_id}-github-deploy"
 
   assume_role_policy = (
-  data.aws_iam_policy_document.github_actions_assume_role.json
+    data.aws_iam_policy_document.github_actions_assume_role.json
   )
 }
 
@@ -49,7 +49,7 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
     condition {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = [
+      values = [
         "repo:C-Hurtmann/capital-os:ref:refs/heads/main"
       ]
     }
