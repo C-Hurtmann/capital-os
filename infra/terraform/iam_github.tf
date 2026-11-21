@@ -1,25 +1,3 @@
-resource "aws_iam_role" "api" {
-  name               = "${local.stack_id}-api-lambda"
-  assume_role_policy = data.aws_iam_policy_document.lambda_assume_role.json
-}
-
-resource "aws_iam_role_policy_attachment" "api_logs" {
-  role       = aws_iam_role.api.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
-}
-
-data "aws_iam_policy_document" "lambda_assume_role" {
-  statement {
-    effect  = "Allow"
-    actions = ["sts:AssumeRole"]
-
-    principals {
-      type        = "Service"
-      identifiers = ["lambda.amazonaws.com"]
-    }
-  }
-}
-
 resource "aws_iam_role" "github_actions_deploy" {
   name = "${local.stack_id}-github-deploy"
 
@@ -50,7 +28,7 @@ data "aws_iam_policy_document" "github_actions_assume_role" {
       test     = "StringEquals"
       variable = "token.actions.githubusercontent.com:sub"
       values = [
-        "repo:C-Hurtmann/capital-os:ref:refs/heads/main"
+        "repo:C-Hurtmann@117198944/capital-os@1444273857:ref:refs/heads/main"
       ]
     }
   }
