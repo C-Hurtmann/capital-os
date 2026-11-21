@@ -1,0 +1,21 @@
+.credit-history-settings { grid-column: 1 / -1; min-width: 0; }
+.credit-history-settings .panel { margin-bottom: 24px; }
+.credit-history-notice { border: 1px solid #6e6548; padding: 16px; border-radius: 10px; background: #29291f; color: #eee1b7; line-height: 1.7; grid-column: 1 / -1; }
+.credit-history-notice button { margin-left: 12px; }
+.credit-history-current { display: block; font-size: 28px; overflow-wrap: anywhere; }
+.credit-history-lookup { display: flex; gap: 24px; align-items: end; flex-wrap: wrap; margin: 24px 0; }
+.credit-history-lookup label,.credit-history-dialog label { display: flex; flex-direction: column; gap: 10px; }
+.credit-history-table { overflow-x: auto; }
+.credit-history-table th,.credit-history-table td { white-space: normal; overflow-wrap: anywhere; }
+.credit-history-table td button { margin: 4px; }
+.credit-history-dialog { width: min(620px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); padding: 24px; box-sizing: border-box; overflow-y: auto; border-radius: 14px; border: 1px solid #53665b; background: #1c2521; color: #edf1ee; }
+.credit-history-dialog::backdrop { background: #050b08b8; }
+.credit-history-dialog h2 { margin: 16px 0; }
+.credit-history-dialog label { margin-top: 20px; }
+.credit-history-dialog input { min-width: 0; width: 100%; box-sizing: border-box; }
+.credit-history-dialog [role=alert] { color: #f3abab; }
+.credit-history-impact { padding: 0; list-style: none; }
+.credit-history-impact li { display: grid; gap: 8px; padding: 14px 0; border-bottom: 1px solid #435047; overflow-wrap: anywhere; }
+.credit-history-quick { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 20px; }
+.credit-history-quick small { flex-basis: 100%; color: #b6c8bc; }
+@media(max-width:600px) { .credit-history-settings .panel-heading { align-items: start; flex-direction: column; gap: 16px; }.credit-history-dialog { padding: 18px; }.credit-history-dialog .drawer-actions { flex-wrap: wrap; }.credit-history-notice button { margin: 10px 8px 0 0; } }

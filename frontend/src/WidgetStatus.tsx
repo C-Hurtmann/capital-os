@@ -14,7 +14,10 @@ export default function WidgetStatus({
   return (
     <>
       {loading && (
-        <div role="status" className={hasData ? "helper" : "widget-skeleton"}>
+        <div
+          role="status"
+          className={hasData ? "helper" : "loading-announcement"}
+        >
           {hasData ? "Updating… Previous values shown." : `Loading ${name}…`}
         </div>
       )}

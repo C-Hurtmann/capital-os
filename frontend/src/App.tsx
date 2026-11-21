@@ -24,6 +24,7 @@ import { useCreditLimit } from "./useCreditLimit";
 import { useBalanceHistory } from "./useBalanceHistory";
 import { useWidget } from "./useWidget";
 import WidgetStatus from "./WidgetStatus";
+import DashboardSkeleton from "./DashboardSkeleton";
 import { money, shortDate, bankTimestamp } from "./format";
 import Transactions from "./Transactions";
 import { liveTransactions } from "./transactionsApi";
@@ -236,7 +237,11 @@ export default function App() {
                       retry={balance.reload}
                     />
                     <strong>
-                      {money(balance.data?.bankBalanceMinor ?? null)}
+                      {balance.loading && !balance.data ? (
+                        <DashboardSkeleton kind="amount" />
+                      ) : (
+                        money(balance.data?.bankBalanceMinor ?? null)
+                      )}
                     </strong>
                     <span>
                       Monobank · UAH ·{" "}
@@ -245,6 +250,8 @@ export default function App() {
                         <time dateTime={balance.data.fetchedAt}>
                           {bankTimestamp(balance.data.fetchedAt)}
                         </time>
+                      ) : balance.loading ? (
+                        <DashboardSkeleton />
                       ) : (
                         "unknown"
                       )}
@@ -252,10 +259,14 @@ export default function App() {
                     <div className="balance-detail">
                       <span>Own funds / credit used</span>
                       <span>
-                        {balance.data?.ownFundsMinor == null &&
-                        balance.data?.creditUsedMinor == null
-                          ? "Estimate unavailable"
-                          : `${money(balance.data?.ownFundsMinor ?? null)} / ${money(balance.data?.creditUsedMinor ?? null)}`}
+                        {balance.loading && !balance.data ? (
+                          <DashboardSkeleton />
+                        ) : balance.data?.ownFundsMinor == null &&
+                          balance.data?.creditUsedMinor == null ? (
+                          "Estimate unavailable"
+                        ) : (
+                          `${money(balance.data?.ownFundsMinor ?? null)} / ${money(balance.data?.creditUsedMinor ?? null)}`
+                        )}
                       </span>
                     </div>
                     <p className="helper">
@@ -275,13 +286,17 @@ export default function App() {
                     <div className="limit-row">
                       <span>
                         Entered credit limit:{" "}
-                        {credit.data
-                          ? limit === null
-                            ? "Not set"
-                            : money(limit ?? null)
-                          : credit.loading
-                            ? "Loading…"
-                            : "Unavailable"}
+                        {credit.data ? (
+                          limit === null ? (
+                            "Not set"
+                          ) : (
+                            money(limit ?? null)
+                          )
+                        ) : credit.loading ? (
+                          <DashboardSkeleton />
+                        ) : (
+                          "Unavailable"
+                        )}
                       </span>
                       <button
                         id="edit-credit-limit"
@@ -309,27 +324,49 @@ export default function App() {
                         net === null ? "" : net < 0 ? "negative" : "positive"
                       }
                     >
-                      {net !== null && net >= 0 ? "+" : ""}
-                      {money(net)}
+                      {cashflow.loading && !cashflow.data ? (
+                        <DashboardSkeleton kind="amount" />
+                      ) : (
+                        <>
+                          {net !== null && net >= 0 ? "+" : ""}
+                          {money(net)}
+                        </>
+                      )}
                     </strong>
                     <span>
-                      {cashflow.data
-                        ? `${cashflow.data.from} – ${cashflow.data.to} · Month to date`
-                        : "Current calendar month"}
+                      {cashflow.data ? (
+                        `${cashflow.data.from} – ${cashflow.data.to} · Month to date`
+                      ) : cashflow.loading ? (
+                        <DashboardSkeleton />
+                      ) : (
+                        "Current calendar month"
+                      )}
                     </span>
                     <div className="cashflow-rows">
                       <div>
                         <span>Income</span>
                         <b className="positive">
-                          {cashflow.data?.incomeMinor != null ? "+" : ""}
-                          {money(cashflow.data?.incomeMinor ?? null)}
+                          {cashflow.loading && !cashflow.data ? (
+                            <DashboardSkeleton />
+                          ) : (
+                            <>
+                              {cashflow.data?.incomeMinor != null ? "+" : ""}
+                              {money(cashflow.data?.incomeMinor ?? null)}
+                            </>
+                          )}
                         </b>
                       </div>
                       <div>
                         <span>Expenses</span>
                         <b className="negative">
-                          {cashflow.data?.expenseMinor != null ? "−" : ""}
-                          {money(cashflow.data?.expenseMinor ?? null)}
+                          {cashflow.loading && !cashflow.data ? (
+                            <DashboardSkeleton />
+                          ) : (
+                            <>
+                              {cashflow.data?.expenseMinor != null ? "−" : ""}
+                              {money(cashflow.data?.expenseMinor ?? null)}
+                            </>
+                          )}
                         </b>
                       </div>
                     </div>
@@ -363,7 +400,9 @@ export default function App() {
                         <section className="panel timeline">
                           <h2>Balance History</h2>
                           {filters}
-                          <div className="chart" />
+                          <div className="chart">
+                            <DashboardSkeleton kind="history" />
+                          </div>
                         </section>
                       }
                     >
@@ -376,7 +415,11 @@ export default function App() {
                     <section className="panel timeline">
                       <h2>Balance History</h2>
                       {filters}
-                      <div className="chart" />
+                      <div className="chart">
+                        {history.loading && (
+                          <DashboardSkeleton kind="history" />
+                        )}
+                      </div>
                     </section>
                   )}
                 </div>
@@ -392,7 +435,9 @@ export default function App() {
                       fallback={
                         <section className="panel monthly">
                           <h2>Monthly Income &amp; Expenses</h2>
-                          <div className="chart" />
+                          <div className="chart">
+                            <DashboardSkeleton kind="monthly" />
+                          </div>
                         </section>
                       }
                     >
@@ -401,7 +446,11 @@ export default function App() {
                   ) : (
                     <section className="panel monthly">
                       <h2>Monthly Income &amp; Expenses</h2>
-                      <div className="chart" />
+                      <div className="chart">
+                        {monthly.loading && (
+                          <DashboardSkeleton kind="monthly" />
+                        )}
+                      </div>
                     </section>
                   )}
                 </div>
@@ -417,7 +466,9 @@ export default function App() {
                       fallback={
                         <section className="panel breakdown">
                           <h2>Spending by Category</h2>
-                          <div className="donut-wrap" />
+                          <div className="donut-wrap">
+                            <DashboardSkeleton kind="donut" />
+                          </div>
                         </section>
                       }
                     >
@@ -429,7 +480,9 @@ export default function App() {
                   ) : (
                     <section className="panel breakdown">
                       <h2>Spending by Category</h2>
-                      <div className="donut-wrap" />
+                      <div className="donut-wrap">
+                        {spending.loading && <DashboardSkeleton kind="donut" />}
+                      </div>
                     </section>
                   )}
                 </div>

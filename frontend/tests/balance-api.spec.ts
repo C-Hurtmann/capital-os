@@ -135,7 +135,9 @@ test("initial loading does not substitute demo balance", async ({ page }) => {
   });
   await page.goto("/");
   await expect(page.locator(".balance")).toContainText("Loading balance…");
-  await expect(page.locator(".balance > strong")).toHaveText("Unavailable");
+  await expect(
+    page.locator(".balance > strong .skeleton-amount"),
+  ).toBeVisible();
   release();
   await expect(page.locator(".balance > strong")).toContainText("70,000.00");
 });
