@@ -1,0 +1,88 @@
+name: Backend CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Python & Docker
+    runs-on: ubuntu-24.04
+
+    defaults:
+      run:
+        working-directory: backend
+
+    env:
+      AWS_REGION: eu-central-1
+      AWS_EC2_METADATA_DISABLED: "true"
+      DYNAMODB_TABLE_NAME: capital-os-local
+      MONOBANK_API_TOKEN: ci-test-token
+      MONOBANK_ACCOUNT_ID: monobank-main
+      CURSOR_SECRET: ci-test-cursor-secret
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v10.3.3
+        with:
+          version: "0.12.3"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Install dependencies
+        run: |
+          uv python install 3.14
+          uv sync --locked
+
+      - name: Ruff lint
+        run: uv run --no-sync ruff check .
+
+      - name: Ruff format
+        run: uv run --no-sync ruff format --check .
+
+      - name: Run tests
+        run: uv run --no-sync pytest -q
+
+      - name: Build Lambda image
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -f Dockerfile.lambda \
+            -t capital-os-backend:ci \
+            .
+
+  terraform:
+    name: Terraform validation
+    runs-on: ubuntu-24.04
+
+    defaults:
+      run:
+        working-directory: infra/terraform
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v4.0.1
+        with:
+          terraform_version: "1.17.2"
+
+      - name: Check formatting
+        run: terraform fmt -check
+
+      - name: Initialize without remote backend
+        run: terraform init -backend=false -input=false
+
+      - name: Validate configuration
+        run: terraform validate -no-color
