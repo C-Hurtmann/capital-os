@@ -1,4 +1,16 @@
 import CreditDrawer from "./CreditDrawer";
+import {
+  CreditHistorySettings,
+  CreditHistoryDialog,
+  type CreditHistoryEditor,
+} from "./CreditHistorySettings";
+import {
+  initialCreditHistory,
+  creditOnDate,
+  mockCreditBalanceHistory,
+} from "./creditHistoryModel";
+import { kyivDay } from "./balanceHistory";
+import { formatMinor } from "./money";
 import { lazy, Suspense, useEffect, useState } from "react";
 import {
   Layers3,
@@ -7,6 +19,7 @@ import {
   RefreshCw,
   ArrowUpRight,
   Wallet,
+  Settings,
 } from "lucide-react";
 import type { HistoryPreset } from "./contracts";
 
@@ -38,6 +51,13 @@ const SpendingChart = lazy(() =>
   import("./Charts").then((m) => ({ default: m.SpendingChart })),
 );
 export default function App() {
+  const [creditHistory, setCreditHistory] = useState(initialCreditHistory);
+  const [historyPreview, setHistoryPreview] = useState(
+    new URLSearchParams(location.search).get("credit-history") === "demo",
+  );
+  const [historyEditor, setHistoryEditor] =
+    useState<CreditHistoryEditor | null>(null);
+  const recordedLimit = creditOnDate(creditHistory, kyivDay(Date.now()));
   const [page, setPage] = useState("dashboard"),
     [preset, setPreset] = useState<HistoryPreset>("3M"),
     [sync, setSync] = useState("idle"),
@@ -93,7 +113,12 @@ export default function App() {
           </button>
         ))}
       </div>
-      {history.data && (
+      {historyPreview && (
+        <p className="range-label">
+          Synthetic daily bank balances · Europe/Kyiv · Preview only
+        </p>
+      )}
+      {!historyPreview && history.data && (
         <p className="range-label">
           {history.data.from
             ? `${shortDate(history.data.from)} – ${shortDate(history.data.to)}`
@@ -127,6 +152,7 @@ export default function App() {
             {[
               ["dashboard", "Dashboard"],
               ["transactions", "Transactions"],
+              ["settings", "Settings"],
             ].map(([id, label]) => (
               <button
                 className={page === id ? "nav-active" : "nav-item"}
@@ -136,6 +162,8 @@ export default function App() {
               >
                 {id === "dashboard" ? (
                   <LayoutDashboard size={18} />
+                ) : id === "settings" ? (
+                  <Settings size={18} />
                 ) : (
                   <ArrowLeftRight size={18} />
                 )}
@@ -161,18 +189,24 @@ export default function App() {
             <span>
               Personal workspace <span>/</span>
               <strong>
-                {page === "dashboard" ? "Overview" : "Transactions"}
+                {page === "dashboard"
+                  ? "Overview"
+                  : page === "settings"
+                    ? "Settings / Credit limit"
+                    : "Transactions"}
               </strong>
             </span>
             <span className="private">
               <span className="status-dot" />
-              {page === "transactions"
-                ? liveTransactions
-                  ? "Local API · Transactions"
-                  : "Demo · Transactions"
-                : liveBalance
-                  ? "Local API · Demo analytics"
-                  : "Demo · 29 Oct 2026"}
+              {page === "settings"
+                ? "Mock · Credit history"
+                : page === "transactions"
+                  ? liveTransactions
+                    ? "Local API · Transactions"
+                    : "Demo · Transactions"
+                  : liveBalance
+                    ? "Local API · Demo analytics"
+                    : "Demo · 29 Oct 2026"}
             </span>
           </header>
           <main id="main">
@@ -180,15 +214,21 @@ export default function App() {
               <div>
                 <span className="eyebrow">YOUR MONEY, IN PERSPECTIVE</span>
                 <h1>
-                  {page === "dashboard" ? "Financial overview" : "Transactions"}
+                  {page === "dashboard"
+                    ? "Financial overview"
+                    : page === "settings"
+                      ? "Settings"
+                      : "Transactions"}
                   <span>.</span>
                 </h1>
                 <p>
                   {page === "dashboard"
                     ? "A clear picture of your account. Facts first."
-                    : liveTransactions
-                      ? "Explore your account activity, one transaction at a time."
-                      : "Explore your activity and make categories your own."}
+                    : page === "settings"
+                      ? "Manage recorded credit limits and their history."
+                      : liveTransactions
+                        ? "Explore your account activity, one transaction at a time."
+                        : "Explore your activity and make categories your own."}
                 </p>
               </div>
               {page === "dashboard" && (
@@ -220,7 +260,17 @@ export default function App() {
                         : "Synthetic snapshot · 29 Oct 2026, 18:30 UTC · Not connected to Monobank"}
               </div>
             )}
-            {page === "transactions" ? (
+            {page === "settings" ? (
+              <CreditHistorySettings
+                entries={creditHistory}
+                onEdit={setHistoryEditor}
+                onReset={() => setCreditHistory(initialCreditHistory)}
+                onPreview={() => {
+                  setHistoryPreview(true);
+                  setPage("dashboard");
+                }}
+              />
+            ) : page === "transactions" ? (
               <Transactions />
             ) : (
               <>
@@ -274,39 +324,72 @@ export default function App() {
                         ? "Saved bank snapshot. Reloading does not sync with Monobank."
                         : "Synthetic balance; own funds and credit usage are not estimated."}
                     </p>
-                    <WidgetStatus
-                      name="credit limit"
-                      {...credit}
-                      hasData={!!credit.data}
-                      retry={credit.reload}
-                    />
-                    {liveCredit && (
-                      <p className="helper">Credit limit from local backend.</p>
-                    )}
-                    <div className="limit-row">
-                      <span>
-                        Entered credit limit:{" "}
-                        {credit.data ? (
-                          limit === null ? (
-                            "Not set"
-                          ) : (
-                            money(limit ?? null)
-                          )
-                        ) : credit.loading ? (
-                          <DashboardSkeleton />
-                        ) : (
-                          "Unavailable"
+                    {historyPreview ? (
+                      <div className="credit-history-quick">
+                        <p>
+                          Recorded credit limit:{" "}
+                          {recordedLimit
+                            ? formatMinor(recordedLimit.amountMinor)
+                            : "Not set"}
+                          <br />
+                          {recordedLimit &&
+                            `Start date: ${recordedLimit.startDate} · Europe/Kyiv`}
+                        </p>
+                        <p className="helper">
+                          Mock history preview. Bank balance and estimates are
+                          not recalculated from these records.
+                        </p>
+                        <button
+                          onClick={() => setHistoryEditor({ kind: "quick" })}
+                        >
+                          Edit limit
+                        </button>
+                        <button onClick={() => setPage("settings")}>
+                          View history
+                        </button>
+                        <button onClick={() => setHistoryPreview(false)}>
+                          Exit history preview
+                        </button>
+                      </div>
+                    ) : (
+                      <>
+                        <WidgetStatus
+                          name="credit limit"
+                          {...credit}
+                          hasData={!!credit.data}
+                          retry={credit.reload}
+                        />
+                        {liveCredit && (
+                          <p className="helper">
+                            Credit limit from local backend.
+                          </p>
                         )}
-                      </span>
-                      <button
-                        id="edit-credit-limit"
-                        disabled={!credit.data}
-                        onClick={() => setEditing(!editing)}
-                        aria-expanded={editing}
-                      >
-                        Edit limit
-                      </button>
-                    </div>
+                        <div className="limit-row">
+                          <span>
+                            Entered credit limit:{" "}
+                            {credit.data ? (
+                              limit === null ? (
+                                "Not set"
+                              ) : (
+                                money(limit ?? null)
+                              )
+                            ) : credit.loading ? (
+                              <DashboardSkeleton />
+                            ) : (
+                              "Unavailable"
+                            )}
+                          </span>
+                          <button
+                            id="edit-credit-limit"
+                            disabled={!credit.data}
+                            onClick={() => setEditing(!editing)}
+                            aria-expanded={editing}
+                          >
+                            Edit limit
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </article>
                   <article className="metric net-card">
                     <div className="metric-title">
@@ -388,13 +471,15 @@ export default function App() {
                   </article>
                 </section>
                 <div className="resource-history">
-                  <WidgetStatus
-                    name="history"
-                    {...history}
-                    hasData={!!history.data}
-                    retry={history.reload}
-                  />
-                  {history.data ? (
+                  {!historyPreview && (
+                    <WidgetStatus
+                      name="history"
+                      {...history}
+                      hasData={!!history.data}
+                      retry={history.reload}
+                    />
+                  )}
+                  {historyPreview || history.data ? (
                     <Suspense
                       fallback={
                         <section className="panel timeline">
@@ -407,7 +492,14 @@ export default function App() {
                       }
                     >
                       <HistoryChart
-                        data={history.data}
+                        data={
+                          historyPreview
+                            ? mockCreditBalanceHistory(preset)
+                            : history.data!
+                        }
+                        recordedLimits={
+                          historyPreview ? creditHistory : undefined
+                        }
                         historyControls={filters}
                       />
                     </Suspense>
@@ -487,6 +579,15 @@ export default function App() {
                   )}
                 </div>
               </>
+            )}
+            {historyEditor && (
+              <CreditHistoryDialog
+                editor={historyEditor}
+                entries={creditHistory}
+                onSave={setCreditHistory}
+                onClose={() => setHistoryEditor(null)}
+                onSettings={() => setPage("settings")}
+              />
             )}
             {editing && credit.data && (
               <CreditDrawer

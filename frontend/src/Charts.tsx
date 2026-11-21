@@ -16,15 +16,24 @@ import type {
 } from "./contracts";
 import { money, monthLabel, shortDate, bankTimestamp } from "./format";
 import { dayNumber, dayString, DAY_MS } from "./balanceHistory";
+import { creditOnDate, type CreditHistoryEntry } from "./creditHistoryModel";
 export { SpendingChart } from "./SpendingChart";
 export function HistoryChart({
   data,
   historyControls,
+  recordedLimits,
 }: {
   data: BalanceHistoryResponse;
   historyControls: ReactNode;
+  recordedLimits?: CreditHistoryEntry[];
 }) {
-  const points = data.points.map((p) => ({ ...p, x: dayNumber(p.date) }));
+  const points = data.points.map((p) => ({
+    ...p,
+    x: dayNumber(p.date),
+    recordedLimitMinor: recordedLimits
+      ? (creditOnDate(recordedLimits, p.date)?.amountMinor ?? null)
+      : null,
+  }));
   const firstKnown = data.points.find((p) => p.balanceMinor !== null);
   const start = data.from ? dayNumber(data.from) : dayNumber(data.to);
   const end = dayNumber(data.to);
@@ -40,6 +49,12 @@ export function HistoryChart({
         <span className="unit">UAH</span>
       </div>
       {historyControls}
+      {recordedLimits && (
+        <p className="helper">
+          Mock preview · Solid: synthetic bank balance · Dashed: recorded +L.
+          Unknown before the first limit record; no balance subtraction.
+        </p>
+      )}
       {data.points[0]?.balanceMinor === null && firstKnown && (
         <p className="helper">No data before {firstKnown.date}.</p>
       )}
@@ -93,9 +108,9 @@ export function HistoryChart({
               />
               <Tooltip
                 labelFormatter={(v) => dayString(Number(v))}
-                formatter={(v) => [
+                formatter={(v, name) => [
                   v == null ? "No data" : money(Number(v)),
-                  "Balance",
+                  name,
                 ]}
                 contentStyle={{
                   borderRadius: 10,
@@ -118,6 +133,19 @@ export function HistoryChart({
                 connectNulls={false}
                 isAnimationActive={false}
               />
+              {recordedLimits && (
+                <Area
+                  type="stepAfter"
+                  dataKey="recordedLimitMinor"
+                  stroke="#e0c17d"
+                  strokeDasharray="6 4"
+                  strokeWidth={2}
+                  fill="none"
+                  name="Recorded credit limit"
+                  connectNulls={false}
+                  isAnimationActive={false}
+                />
+              )}
             </AreaChart>
           </ResponsiveContainer>
         </div>

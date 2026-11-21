@@ -89,6 +89,7 @@ test("failed refresh retains previously loaded data", async ({
   await expect(
     page.getByRole("heading", { name: "Balance History" }),
   ).toBeVisible();
+  await expect(page.locator(".metric.balance>strong")).toContainText("UAH");
   const value = await page.locator(".metric.balance>strong").innerText();
   await context.setOffline(true);
   await page.getByRole("button", { name: "Refresh demo", exact: true }).click();
