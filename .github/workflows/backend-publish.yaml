@@ -1,0 +1,77 @@
+name: Backend Publish
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: backend-ecr-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish Docker image to ECR
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          role-to-assume: arn:aws:iam::548088752665:role/capital-os-github-deploy
+          aws-region: eu-central-1
+          allowed-account-ids: "548088752665"
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2.1.7
+
+      - name: Build and publish image
+        env:
+          ECR_REGISTRY: ${{ steps.ecr-login.outputs.registry }}
+          ECR_REPOSITORY: capital-os-backend
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          existing_digest=$(aws ecr batch-get-image \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-ids "imageTag=$IMAGE_TAG" \
+            --query 'images[0].imageId.imageDigest' \
+            --output text)
+
+          image="$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
+
+          if [[ "$existing_digest" == "None" || -z "$existing_digest" ]]; then
+            docker build \
+              --platform linux/amd64 \
+              -f backend/Dockerfile.lambda \
+              -t "$image" \
+              backend
+
+            docker push "$image"
+          else
+            echo "Image already exists: $image"
+          fi
+
+          digest=$(aws ecr batch-get-image \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-ids "imageTag=$IMAGE_TAG" \
+            --query 'images[0].imageId.imageDigest' \
+            --output text)
+
+          if [[ "$digest" != sha256:* ]]; then
+            echo "Could not verify ECR image digest" >&2
+            exit 1
+          fi
+
+          echo "Published image: $ECR_REGISTRY/$ECR_REPOSITORY@$digest"
+          echo "Image digest: $digest" >> "$GITHUB_STEP_SUMMARY"
